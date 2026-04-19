@@ -1,7 +1,7 @@
 // lib/constants.ts
 
 export const APP_TEXT = {
-  brand: "Beauty Record PWA",
+  brand: "B-RECO",
   appTitle: "スケジュール記録",
   homeTodayTitle: "今日",
   homeTodayDescription: "日ごとの記録を残して、あとで見返せます。",

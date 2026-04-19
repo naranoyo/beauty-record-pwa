@@ -7,8 +7,8 @@ import BottomNav from "@/components/layout/BottomNav";
 import { AppProvider } from "@/lib/state";
 
 export const metadata: Metadata = {
-  title: "Beauty Record PWA",
-  description: "美容記録を残して見返せるPWAアプリ",
+  title: "B-RECO",
+  description: "美容・体型・髪型・メモを日付ごとに記録できるアプリ",
   manifest: "/manifest.webmanifest",
 };
 

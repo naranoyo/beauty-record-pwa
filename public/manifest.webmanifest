@@ -1,6 +1,6 @@
 {
-  "name": "Beauty Record PWA",
-  "short_name": "BeautyRecord",
+  "name": "B-RECO",
+  "short_name": "B-RECO",
   "description": "美容・体型・髪型・メモを日付ごとに記録できるアプリ",
   "start_url": "/",
   "display": "standalone",
