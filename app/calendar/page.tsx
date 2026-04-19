@@ -116,7 +116,7 @@ export default function CalendarPage() {
 
               <Link
                 href={`/records/new?date=${selectedDate}`}
-                className="mt-4 inline-flex rounded-2xl bg-pink-500 px-4 py-3 text-sm font-medium text-white"
+                className="mt-4 inline-flex rounded-2xl bg-pink-500 px-4 py-3 text-sm font-medium !text-white"
               >
                 記録を追加する
               </Link>

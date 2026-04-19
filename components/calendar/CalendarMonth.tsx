@@ -342,7 +342,7 @@ export default function CalendarMonth({
       ) : null}
 
       <div className="mt-4 flex justify-end">
-        <LinkButton href="/records/new">新しい記録を追加</LinkButton>
+        <LinkButton href="/records/new">記録を追加する</LinkButton>
       </div>
     </section>
   );
