@@ -54,9 +54,10 @@ export default function RecordImageUploader({
   return (
     <div className="space-y-3">
       <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
-        <p className="text-sm font-medium text-slate-700">画像アップロード</p>
+        <p className="text-sm font-medium text-slate-700">スケジュール用画像</p>
+
         <p className="mt-1 text-xs leading-6 text-slate-500">
-          脱毛後の画像、髪型、体型の変化などを保存できます。
+          脱毛後の状態、髪型、体型の変化などを記録できます。
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -64,9 +65,9 @@ export default function RecordImageUploader({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={saving || imageIds.length >= maxImages}
-            className="rounded-xl bg-pink-500 px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-pink-500 px-4 py-3 text-sm font-medium text-white transition hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? "保存中..." : "画像を選ぶ"}
+            {saving ? "保存中..." : "画像を追加"}
           </button>
 
           <span className="text-xs text-slate-500">

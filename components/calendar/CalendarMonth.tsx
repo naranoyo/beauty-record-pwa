@@ -2,348 +2,437 @@
 
 "use client";
 
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import type { BeautyRecord } from "@/lib/types";
+import type { BeautyRecord, RecordCategory } from "@/lib/types";
+import { getHolidayName } from "@/lib/calendar-holidays";
+import { getCategoryDotStyle } from "@/lib/category-colors";
 import { getImagesByIds } from "@/lib/image-storage";
-import LinkButton from "@/components/ui/LinkButton";
+
+type CalendarViewMode = "day" | "week" | "month" | "year";
 
 type Props = {
-  currentMonth: Date;
-  selectedDate: string;
   records: BeautyRecord[];
+  selectedDate: string;
+  displayDate: Date;
+  onSelectDate: (dateKey: string) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
-  onSelectDate: (date: string) => void;
 };
 
-const WEEK_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
-
-const CATEGORY_COLOR: Record<string, string> = {
-  epilation: "bg-pink-400",
-  hair: "bg-purple-400",
-  diet: "bg-blue-400",
-  nail: "bg-yellow-400",
-  skin: "bg-green-400",
-  memo: "bg-slate-400",
-  other: "bg-slate-400",
-};
-
-function toDateString(date: Date) {
+function toDateKey(date: Date) {
   const y = date.getFullYear();
   const m = `${date.getMonth() + 1}`.padStart(2, "0");
   const d = `${date.getDate()}`.padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
-function buildCalendarDays(currentMonth: Date) {
-  const first = new Date(
-    currentMonth.getFullYear(),
-    currentMonth.getMonth(),
-    1
-  );
-  const last = new Date(
-    currentMonth.getFullYear(),
-    currentMonth.getMonth() + 1,
-    0
-  );
-
-  const start = new Date(first);
-  start.setDate(first.getDate() - first.getDay());
-
-  const end = new Date(last);
-  end.setDate(last.getDate() + (6 - last.getDay()));
-
-  const days: Date[] = [];
-  const cur = new Date(start);
-
-  while (cur <= end) {
-    days.push(new Date(cur));
-    cur.setDate(cur.getDate() + 1);
-  }
-
-  return days;
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
 }
 
-function isSameMonth(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
-}
-
-function categoryLabel(category: string) {
-  switch (category) {
-    case "hair":
-      return "髪型";
-    case "diet":
-      return "ダイエット";
-    case "epilation":
-      return "脱毛";
-    case "nail":
-      return "ネイル";
-    case "skin":
-      return "肌";
-    case "memo":
-      return "メモ";
-    default:
-      return "その他";
-  }
-}
-
-function formatSelectedDate(dateString: string) {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return dateString;
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  }).format(date);
+function getWeekStart(date: Date) {
+  return addDays(date, -date.getDay());
 }
 
 export default function CalendarMonth({
-  currentMonth,
-  selectedDate,
   records,
+  selectedDate,
+  displayDate,
+  onSelectDate,
   onPrevMonth,
   onNextMonth,
-  onSelectDate,
 }: Props) {
-  const router = useRouter();
-  const days = useMemo(() => buildCalendarDays(currentMonth), [currentMonth]);
-  const today = toDateString(new Date());
+  const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
 
-  const recordMap = useMemo(() => {
-    return records.reduce<Record<string, BeautyRecord[]>>((acc, r) => {
-      if (!acc[r.date]) acc[r.date] = [];
-      acc[r.date].push(r);
-      return acc;
-    }, {});
-  }, [records]);
+  const year = displayDate.getFullYear();
+  const month = displayDate.getMonth();
 
-  const [thumbMap, setThumbMap] = useState<Record<string, string>>({});
-  const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const monthDays = useMemo(() => {
+    const firstDate = new Date(year, month, 1);
+    const startDate = addDays(firstDate, -firstDate.getDay());
 
-  useEffect(() => {
-    let alive = true;
+    return Array.from({ length: 42 }, (_, index) => addDays(startDate, index));
+  }, [year, month]);
 
-    const load = async () => {
-      const map: Record<string, string> = {};
+  const weekDays = useMemo(() => {
+    const selected = new Date(`${selectedDate}T00:00:00`);
+    const startDate = getWeekStart(selected);
 
-      for (const date of Object.keys(recordMap)) {
-        const recs = recordMap[date];
-        const target = recs.find((r) => r.imageIds?.length > 0);
-        if (!target) continue;
+    return Array.from({ length: 7 }, (_, index) => addDays(startDate, index));
+  }, [selectedDate]);
 
-        try {
-          const imgs = await getImagesByIds(target.imageIds);
-          if (imgs[0]?.dataUrl) {
-            map[date] = imgs[0].dataUrl;
-          }
-        } catch {
-          // 読み込み失敗時は無視
-        }
-      }
-
-      if (alive) {
-        setThumbMap(map);
-      }
-    };
-
-    load();
-
-    return () => {
-      alive = false;
-    };
-  }, [recordMap]);
-
-  const handleDayClick = (date: string) => {
-    onSelectDate(date);
-
-    const dayRecords = recordMap[date] ?? [];
-
-    if (dayRecords.length === 1) {
-      router.push(`/records/${dayRecords[0].id}`);
-      return;
-    }
-
-    if (dayRecords.length >= 2) {
-      setExpandedDate(date);
-      return;
-    }
-
-    setExpandedDate(null);
-  };
-
-  const expandedRecords = expandedDate ? (recordMap[expandedDate] ?? []) : [];
+  const selectedDateObject = new Date(`${selectedDate}T00:00:00`);
 
   return (
-    <section className="rounded-3xl border border-pink-100 bg-white p-4 shadow-sm">
-      <div className="mb-4 flex items-center justify-between gap-2">
+    <section className="rounded-4xl border border-pink-100 bg-white p-5 shadow-sm">
+      <div className="mb-5 grid grid-cols-4 gap-2 rounded-3xl bg-slate-100 p-1">
+        {[
+          { key: "day", label: "日" },
+          { key: "week", label: "週" },
+          { key: "month", label: "月" },
+          { key: "year", label: "年" },
+        ].map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => setViewMode(item.key as CalendarViewMode)}
+            className={[
+              "rounded-2xl px-3 py-2 text-sm font-bold transition",
+              viewMode === item.key
+                ? "bg-white text-pink-600 shadow-sm"
+                : "text-slate-500",
+            ].join(" ")}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mb-8 flex items-center justify-center gap-10">
         <button
           type="button"
           onClick={onPrevMonth}
-          className="touch-manipulation rounded-xl bg-pink-100 px-4 py-2 text-sm font-semibold text-pink-600 active:scale-[0.98]"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm transition hover:bg-slate-100 active:scale-95"
         >
-          前月
+          <span className="text-3xl font-bold text-slate-700">‹</span>
         </button>
 
-        <h2 className="text-base font-bold text-slate-900">
-          {currentMonth.getFullYear()}年{currentMonth.getMonth() + 1}月
+        <h2 className="min-w-40 text-center text-2xl font-bold text-slate-950">
+          {viewMode === "year" ? `${year}年` : `${year}年${month + 1}月`}
         </h2>
 
         <button
           type="button"
           onClick={onNextMonth}
-          className="touch-manipulation rounded-xl bg-pink-100 px-4 py-2 text-sm font-semibold text-pink-600 active:scale-[0.98]"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm transition hover:bg-slate-100 active:scale-95"
         >
-          次月
+          <span className="text-3xl font-bold text-slate-700">›</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1.5">
-        {WEEK_LABELS.map((d) => (
-          <div
-            key={d}
-            className="pb-1 text-center text-[11px] font-medium text-slate-500"
+      {viewMode === "month" ? (
+        <CalendarGrid
+          days={monthDays}
+          records={records}
+          selectedDate={selectedDate}
+          displayMonth={month}
+          onSelectDate={onSelectDate}
+        />
+      ) : null}
+
+      {viewMode === "week" ? (
+        <CalendarGrid
+          days={weekDays}
+          records={records}
+          selectedDate={selectedDate}
+          displayMonth={month}
+          onSelectDate={onSelectDate}
+        />
+      ) : null}
+
+      {viewMode === "day" ? (
+        <div className="grid gap-2">
+          <CalendarCell
+            date={selectedDateObject}
+            records={records.filter((record) => record.date === selectedDate)}
+            active
+            currentMonth
+            onClick={() => onSelectDate(selectedDate)}
+          />
+        </div>
+      ) : null}
+
+      {viewMode === "year" ? (
+        <YearCalendarView
+          year={year}
+          records={records}
+          selectedDate={selectedDate}
+          onSelectDate={onSelectDate}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function CalendarGrid({
+  days,
+  records,
+  selectedDate,
+  displayMonth,
+  onSelectDate,
+}: {
+  days: Date[];
+  records: BeautyRecord[];
+  selectedDate: string;
+  displayMonth: number;
+  onSelectDate: (dateKey: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-7 gap-2">
+      {["日", "月", "火", "水", "木", "金", "土"].map((week, index) => (
+        <div
+          key={week}
+          className={[
+            "pb-3 text-center text-sm font-bold",
+            index === 0 ? "text-red-500" : "",
+            index === 6 ? "text-blue-500" : "",
+            index !== 0 && index !== 6 ? "text-slate-500" : "",
+          ].join(" ")}
+        >
+          {week}
+        </div>
+      ))}
+
+      {days.map((date) => {
+        const dateKey = toDateKey(date);
+        const dayRecords = records.filter((record) => record.date === dateKey);
+
+        return (
+          <CalendarCell
+            key={dateKey}
+            date={date}
+            records={dayRecords}
+            active={selectedDate === dateKey}
+            currentMonth={date.getMonth() === displayMonth}
+            onClick={() => onSelectDate(dateKey)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function CalendarCell({
+  date,
+  records,
+  active,
+  currentMonth,
+  onClick,
+}: {
+  date: Date;
+  records: BeautyRecord[];
+  active: boolean;
+  currentMonth: boolean;
+  onClick: () => void;
+}) {
+  const [bgImage, setBgImage] = useState<string | null>(null);
+
+  const dateKey = toDateKey(date);
+  const holidayName = getHolidayName(dateKey);
+  const day = date.getDay();
+
+  const categories = Array.from(
+    new Set(records.map((record) => record.category))
+  ) as RecordCategory[];
+
+  const firstImageId = records.find((record) => record.imageIds.length > 0)
+    ?.imageIds[0];
+
+  useEffect(() => {
+    let activeFlag = true;
+
+    const run = async () => {
+      if (!firstImageId) {
+        setBgImage(null);
+        return;
+      }
+
+      try {
+        const images = await getImagesByIds([firstImageId]);
+        if (!activeFlag) return;
+
+        setBgImage(images[0]?.dataUrl ?? null);
+      } catch {
+        if (!activeFlag) return;
+        setBgImage(null);
+      }
+    };
+
+    run();
+
+    return () => {
+      activeFlag = false;
+    };
+  }, [firstImageId]);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={holidayName ?? undefined}
+      className={[
+        "relative min-h-28 overflow-hidden rounded-2xl border p-3 text-left transition active:scale-[0.98]",
+        active
+          ? "border-pink-400 bg-pink-50 shadow-sm"
+          : "border-slate-200 bg-white",
+        !currentMonth ? "opacity-40" : "",
+        currentMonth && day === 0 ? "bg-red-50" : "",
+        currentMonth && day === 6 ? "bg-blue-50" : "",
+      ].join(" ")}
+    >
+      {bgImage ? (
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-20"
+          style={{ backgroundImage: `url(${bgImage})` }}
+        />
+      ) : null}
+
+      <div className="relative z-10">
+        <div className="flex items-center justify-between gap-1">
+          <span
+            className={[
+              "text-base font-bold",
+              day === 0 || holidayName ? "text-red-500" : "",
+              day === 6 ? "text-blue-500" : "",
+              day !== 0 && day !== 6 && !holidayName ? "text-slate-950" : "",
+            ].join(" ")}
           >
-            {d}
+            {date.getDate()}
+          </span>
+
+          {records.length > 0 ? (
+            <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-slate-700 shadow-sm">
+              {records.length}
+            </span>
+          ) : null}
+        </div>
+
+        {holidayName ? (
+          <p className="mt-1 truncate text-[10px] font-bold text-red-500">
+            {holidayName}
+          </p>
+        ) : null}
+
+        {categories.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {categories.slice(0, 5).map((category) => (
+              <span
+                key={category}
+                className="h-3 w-3 rounded-full"
+                style={getCategoryDotStyle(category)}
+              />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </button>
+  );
+}
+
+function YearCalendarView({
+  year,
+  records,
+  selectedDate,
+  onSelectDate,
+}: {
+  year: number;
+  records: BeautyRecord[];
+  selectedDate: string;
+  onSelectDate: (dateKey: string) => void;
+}) {
+  return (
+    <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 12 }, (_, monthIndex) => (
+        <MiniMonth
+          key={monthIndex}
+          year={year}
+          month={monthIndex}
+          records={records}
+          selectedDate={selectedDate}
+          onSelectDate={onSelectDate}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MiniMonth({
+  year,
+  month,
+  records,
+  selectedDate,
+  onSelectDate,
+}: {
+  year: number;
+  month: number;
+  records: BeautyRecord[];
+  selectedDate: string;
+  onSelectDate: (dateKey: string) => void;
+}) {
+  const firstDate = new Date(year, month, 1);
+  const startDate = addDays(firstDate, -firstDate.getDay());
+
+  const days = Array.from({ length: 42 }, (_, index) =>
+    addDays(startDate, index)
+  );
+
+  const todayKey = toDateKey(new Date());
+
+  return (
+    <div>
+      <h3 className="mb-3 text-lg font-bold text-slate-900">{month + 1}月</h3>
+
+      <div className="grid grid-cols-7 gap-1 text-center">
+        {["日", "月", "火", "水", "木", "金", "土"].map((week, index) => (
+          <div
+            key={week}
+            className={[
+              "text-xs font-bold",
+              index === 0 ? "text-red-500" : "",
+              index === 6 ? "text-blue-500" : "",
+              index !== 0 && index !== 6 ? "text-slate-500" : "",
+            ].join(" ")}
+          >
+            {week}
           </div>
         ))}
 
-        {days.map((day) => {
-          const date = toDateString(day);
-          const recs = recordMap[date] ?? [];
-          const isToday = date === today;
-          const isSelected = date === selectedDate;
-          const inCurrentMonth = isSameMonth(day, currentMonth);
-          const categories = [...new Set(recs.map((r) => r.category))];
-          const isExpanded = expandedDate === date;
+        {days.map((date) => {
+          const dateKey = toDateKey(date);
+          const currentMonth = date.getMonth() === month;
+
+          const dayRecords = records.filter(
+            (record) => record.date === dateKey
+          );
+
+          const isSelected = selectedDate === dateKey;
+          const isToday = todayKey === dateKey;
+          const isSunday = date.getDay() === 0;
+          const isSaturday = date.getDay() === 6;
 
           return (
             <button
-              key={date}
+              key={dateKey}
               type="button"
-              onClick={() => handleDayClick(date)}
+              onClick={() => onSelectDate(dateKey)}
               className={[
-                "touch-manipulation relative min-h-16 overflow-hidden rounded-2xl border p-2 text-left transition active:scale-[0.98]",
-                inCurrentMonth
-                  ? "border-slate-300 bg-white"
-                  : "border-slate-200 bg-slate-50",
-                isSelected ? "ring-2 ring-pink-300" : "",
-                isExpanded ? "bg-pink-50" : "",
+                "relative flex h-8 items-center justify-center rounded-full text-xs font-bold transition active:scale-95",
+                !currentMonth ? "opacity-20" : "",
+                isSelected ? "bg-pink-500 text-white!" : "",
+                !isSelected && isToday ? "bg-emerald-500 text-white!" : "",
+                !isSelected && !isToday && isSunday ? "text-red-500" : "",
+                !isSelected && !isToday && isSaturday ? "text-blue-500" : "",
+                !isSelected && !isToday && !isSunday && !isSaturday
+                  ? "text-slate-800"
+                  : "",
               ].join(" ")}
             >
-              {thumbMap[date] ? (
-                <div className="pointer-events-none absolute inset-0 opacity-20">
-                  <Image
-                    src={thumbMap[date]}
-                    alt=""
-                    fill
-                    unoptimized
-                    className="object-cover"
-                  />
-                </div>
-              ) : null}
+              {date.getDate()}
 
-              <div className="relative z-10 flex items-start justify-between gap-1">
+              {dayRecords.length > 0 ? (
                 <span
                   className={[
-                    "text-xs font-bold",
-                    inCurrentMonth ? "text-slate-900" : "text-slate-400",
-                    isToday ? "text-pink-600" : "",
+                    "absolute bottom-0 h-1 w-1 rounded-full",
+                    isSelected ? "bg-white" : "bg-pink-500",
                   ].join(" ")}
-                >
-                  {day.getDate()}
-                </span>
-
-                {recs.length > 0 ? (
-                  <span className="text-[10px] font-bold text-slate-700">
-                    {recs.length}
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="relative z-10 mt-1.5 flex gap-1">
-                {categories.slice(0, 4).map((c) => (
-                  <span
-                    key={c}
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      CATEGORY_COLOR[c] ?? "bg-slate-300"
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {recs.some((r) => r.imageIds?.length > 0) ? (
-                <div className="pointer-events-none absolute bottom-1 right-1 text-[10px]">
-                  📷
-                </div>
-              ) : null}
-
-              {isToday ? (
-                <div className="relative z-10 mt-1 text-[10px] font-medium text-pink-500">
-                  今日
-                </div>
+                />
               ) : null}
             </button>
           );
         })}
       </div>
-
-      {expandedDate && expandedRecords.length >= 2 ? (
-        <div className="mt-4 rounded-3xl border border-pink-100 bg-pink-50/40 p-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                {formatSelectedDate(expandedDate)}
-              </h3>
-              <p className="mt-1 text-xs text-slate-600">
-                この日は複数の記録があります。開きたい記録を選んでください。
-              </p>
-            </div>
-
-            <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-600">
-              {expandedRecords.length}件
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {expandedRecords.map((record) => (
-              <button
-                key={record.id}
-                type="button"
-                onClick={() => router.push(`/records/${record.id}`)}
-                className="touch-manipulation block w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition active:scale-[0.98]"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-700">
-                    {categoryLabel(record.category)}
-                  </span>
-
-                  {record.imageIds.length > 0 ? (
-                    <span className="rounded-full bg-pink-100 px-3 py-1 text-[11px] font-medium text-pink-600">
-                      画像 {record.imageIds.length}件
-                    </span>
-                  ) : null}
-                </div>
-
-                <p className="mt-3 text-sm font-semibold text-slate-900">
-                  {record.title}
-                </p>
-
-                <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                  {record.memo || "メモはありません。"}
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="mt-4 flex justify-end">
-        <LinkButton href="/records/new">記録を追加する</LinkButton>
-      </div>
-    </section>
+    </div>
   );
 }

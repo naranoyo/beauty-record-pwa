@@ -2,166 +2,90 @@
 
 "use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useMemo, useState } from "react";
+import PageContainer from "@/components/layout/PageContainer";
+import RecordSummaryCard from "@/components/records/RecordSummaryCard";
+import { CATEGORY_ITEMS } from "@/lib/category-colors";
+import { categoryLabel } from "@/lib/record-utils";
 import { useAppState } from "@/lib/state";
-import { getImagesByIds } from "@/lib/image-storage";
-import LinkButton from "@/components/ui/LinkButton";
-
-function categoryLabel(category: string) {
-  switch (category) {
-    case "hair":
-      return "髪型";
-    case "diet":
-      return "ダイエット";
-    case "epilation":
-      return "脱毛";
-    case "nail":
-      return "ネイル";
-    case "skin":
-      return "肌";
-    case "memo":
-      return "メモ";
-    default:
-      return "その他";
-  }
-}
-
-function formatDateLabel(dateString: string) {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return dateString;
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-  }).format(date);
-}
+import type { BeautyRecord, RecordCategory } from "@/lib/types";
+import { APP_TEXT } from "@/lib/constants";
 
 export default function RecordsPage() {
-  const { state } = useAppState();
-  const [thumbMap, setThumbMap] = useState<Record<string, string>>({});
+  const { state, updateRecord } = useAppState();
+  const [category, setCategory] = useState<"all" | RecordCategory>("all");
 
-  const records = useMemo(() => state.records, [state.records]);
-
-  useEffect(() => {
-    let alive = true;
-
-    const load = async () => {
-      const map: Record<string, string> = {};
-
-      for (const record of records) {
-        if (!record.imageIds || record.imageIds.length === 0) continue;
-
-        try {
-          const images = await getImagesByIds(record.imageIds);
-          if (images[0]?.dataUrl) {
-            map[record.id] = images[0].dataUrl;
-          }
-        } catch {
-          // 読み込み失敗時は無視
-        }
-      }
-
-      if (alive) {
-        setThumbMap(map);
-      }
-    };
-
-    load();
-
-    return () => {
-      alive = false;
-    };
-  }, [records]);
+  const records = useMemo<BeautyRecord[]>(() => {
+    return [...state.records]
+      .filter((record) => category === "all" || record.category === category)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [state.records, category]);
 
   return (
-    <main className="mx-auto w-full max-w-2xl p-4 pb-24">
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">記録一覧</h1>
-          <p className="mt-2 text-sm text-slate-600">
-            保存した記録を一覧で確認できます。
+    <PageContainer>
+      <div className="space-y-5">
+        <section className="space-y-2">
+          <h1 className="text-2xl font-bold text-slate-950">
+            スケジュール一覧
+          </h1>
+
+          <p className="text-sm text-slate-600">
+            保存したスケジュールを一覧で確認できます。
           </p>
-        </div>
+        </section>
 
-        <LinkButton href="/records/new">新規追加</LinkButton>
-      </div>
+        <Link
+          href="/records/new"
+          className="inline-flex rounded-2xl bg-pink-500 px-5 py-3 text-sm font-bold text-white! shadow-sm active:scale-[0.98]"
+        >
+          {APP_TEXT.scheduleAddButton}
+        </Link>
+        <section className="rounded-3xl border border-pink-100 bg-white px-4 py-4 shadow-sm">
+          <label className="grid gap-2">
+            <span className="text-sm font-bold text-slate-800">カテゴリ</span>
 
-      {!state.initialized ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-600">読み込み中...</p>
-        </div>
-      ) : records.length === 0 ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-600">まだ記録がありません。</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {records.map((record) => {
-            const thumb = thumbMap[record.id];
+            <select
+              value={category}
+              onChange={(e) =>
+                setCategory(e.target.value as "all" | RecordCategory)
+              }
+              className="h-12 rounded-2xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none"
+            >
+              <option value="all">すべて</option>
 
-            return (
-              <Link
+              {CATEGORY_ITEMS.map((item) => (
+                <option key={item} value={item}>
+                  {categoryLabel(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+
+        <section className="space-y-3">
+          {records.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-pink-200 bg-white px-5 py-8 text-center text-sm text-slate-500">
+              スケジュールはまだありません。
+            </div>
+          ) : (
+            records.map((record) => (
+              <RecordSummaryCard
                 key={record.id}
-                href={`/records/${record.id}`}
-                className="block overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:border-pink-200 hover:shadow"
-              >
-                <div className="flex min-h-28">
-                  <div className="relative w-28 shrink-0 bg-slate-100 sm:w-32">
-                    {thumb ? (
-                      <Image
-                        src={thumb}
-                        alt=""
-                        fill
-                        unoptimized
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-xs font-medium text-slate-400">
-                        No Image
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex min-w-0 flex-1 flex-col justify-between p-4">
-                    <div>
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-700">
-                          {categoryLabel(record.category)}
-                        </span>
-
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-700">
-                          {formatDateLabel(record.date)}
-                        </span>
-
-                        {record.imageIds.length > 0 ? (
-                          <span className="rounded-full bg-pink-100 px-3 py-1 text-[11px] font-medium text-pink-600">
-                            画像 {record.imageIds.length}件
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <h2 className="truncate text-sm font-bold text-slate-900 sm:text-base">
-                        {record.title}
-                      </h2>
-
-                      <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                        {record.memo || "メモはありません。"}
-                      </p>
-                    </div>
-
-                    <div className="mt-3 text-[11px] text-slate-400">
-                      タップで詳細を見る
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </main>
+                record={record}
+                allRecords={state.records}
+                showActions
+                onDone={(target) =>
+                  updateRecord({
+                    ...target,
+                    status: "done",
+                  })
+                }
+              />
+            ))
+          )}
+        </section>
+      </div>
+    </PageContainer>
   );
 }

@@ -1,13 +1,15 @@
 // lib/types.ts
 
 export type RecordCategory =
+  | "epilation"
   | "hair"
   | "diet"
-  | "epilation"
-  | "nail"
-  | "skin"
-  | "memo"
+  | "training"
+  | "work"
+  | "stretch"
   | "other";
+
+export type RecordStatus = "planned" | "done";
 
 export type BeautyRecord = {
   id: string;
@@ -16,6 +18,7 @@ export type BeautyRecord = {
   title: string;
   memo: string;
   imageIds: string[];
+  status?: RecordStatus;
   createdAt: string;
   updatedAt: string;
 };
@@ -31,4 +34,5 @@ export type RecordFormValues = {
   title: string;
   memo: string;
   imageIds: string[];
+  status: RecordStatus;
 };

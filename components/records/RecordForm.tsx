@@ -4,46 +4,40 @@
 
 import { useState } from "react";
 import type { RecordCategory, RecordFormValues } from "@/lib/types";
+import { CATEGORY_ITEMS } from "@/lib/category-colors";
+import { categoryLabel } from "@/lib/record-utils";
 import RecordImageUploader from "@/components/records/RecordImageUploader";
 import RecordImagePreview from "@/components/records/RecordImagePreview";
 
 type Props = {
   initialValues?: Partial<RecordFormValues>;
-  submitLabel?: string;
+  submitLabel: string;
   onSubmit: (values: RecordFormValues) => void;
-  onCancel?: () => void;
 };
 
-const CATEGORY_OPTIONS: { value: RecordCategory; label: string }[] = [
-  { value: "hair", label: "髪型" },
-  { value: "diet", label: "ダイエット" },
-  { value: "epilation", label: "脱毛" },
-  { value: "nail", label: "ネイル" },
-  { value: "skin", label: "肌" },
-  { value: "memo", label: "メモ" },
-  { value: "other", label: "その他" },
-];
-
-function getTodayString() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = `${now.getMonth() + 1}`.padStart(2, "0");
-  const d = `${now.getDate()}`.padStart(2, "0");
+function getTodayKey() {
+  const date = new Date();
+  const y = date.getFullYear();
+  const m = `${date.getMonth() + 1}`.padStart(2, "0");
+  const d = `${date.getDate()}`.padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
 export default function RecordForm({
   initialValues,
-  submitLabel = "保存する",
+  submitLabel,
   onSubmit,
-  onCancel,
 }: Props) {
-  const [date, setDate] = useState(initialValues?.date ?? getTodayString());
+  const [date, setDate] = useState(initialValues?.date ?? getTodayKey());
+
   const [category, setCategory] = useState<RecordCategory>(
-    initialValues?.category ?? "memo"
+    initialValues?.category ?? CATEGORY_ITEMS[0]
   );
+
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [memo, setMemo] = useState(initialValues?.memo ?? "");
+  const [status, setStatus] = useState(initialValues?.status ?? "planned");
+
   const [imageIds, setImageIds] = useState<string[]>(
     initialValues?.imageIds ?? []
   );
@@ -51,80 +45,69 @@ export default function RecordForm({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const trimmedTitle = title.trim();
-    const trimmedMemo = memo.trim();
-
-    if (!trimmedTitle) {
-      alert("タイトルを入力してください。");
-      return;
-    }
-
     onSubmit({
+      title: title.trim() || "タイトルなし",
       date,
       category,
-      title: trimmedTitle,
-      memo: trimmedMemo,
+      memo,
+      status,
       imageIds,
     });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-slate-700">日付</label>
+      <label className="grid gap-2">
+        <span className="text-sm font-bold text-slate-700">日付</span>
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-pink-400"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-pink-400"
         />
-      </div>
+      </label>
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-slate-700">
-          カテゴリ
-        </label>
+      <label className="grid gap-2">
+        <span className="text-sm font-bold text-slate-700">カテゴリ</span>
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value as RecordCategory)}
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-pink-400"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-pink-400"
         >
-          {CATEGORY_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
+          {CATEGORY_ITEMS.map((item) => (
+            <option key={item} value={item}>
+              {categoryLabel(item)}
             </option>
           ))}
         </select>
-      </div>
+      </label>
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-slate-700">
-          タイトル
-        </label>
+      <label className="grid gap-2">
+        <span className="text-sm font-bold text-slate-700">タイトル</span>
         <input
-          type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="例：脱毛3回目 / 体重メモ / 髪型メモ"
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-pink-400"
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-pink-400"
+          placeholder="例：脱毛、髪型、トレーニングなど"
         />
-      </div>
+      </label>
 
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-slate-700">メモ</label>
+      <label className="grid gap-2">
+        <span className="text-sm font-bold text-slate-700">メモ</span>
         <textarea
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
-          rows={6}
-          placeholder="気づいたことや状態を入力"
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-pink-400"
+          rows={5}
+          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-pink-400"
+          placeholder="メモを入力"
         />
-      </div>
+      </label>
 
-      <RecordImageUploader imageIds={imageIds} onChange={setImageIds} />
+      <div className="grid gap-3">
+        <span className="text-sm font-bold text-slate-700">画像</span>
 
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-slate-700">画像プレビュー</p>
+        <RecordImageUploader imageIds={imageIds} onChange={setImageIds} />
+
         <RecordImagePreview
           imageIds={imageIds}
           editable
@@ -132,24 +115,44 @@ export default function RecordForm({
         />
       </div>
 
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          className="flex-1 rounded-xl bg-pink-500 px-4 py-3 text-sm font-medium text-white hover:bg-pink-600"
-        >
-          {submitLabel}
-        </button>
+      <div className="grid gap-2">
+        <span className="text-sm font-bold text-slate-700">状態</span>
 
-        {onCancel ? (
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={onCancel}
-            className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700"
+            onClick={() => setStatus("planned")}
+            className={[
+              "rounded-2xl px-4 py-3 text-sm font-bold",
+              status === "planned"
+                ? "bg-yellow-400 text-white!"
+                : "bg-slate-100 text-slate-700",
+            ].join(" ")}
           >
-            キャンセル
+            予定
           </button>
-        ) : null}
+
+          <button
+            type="button"
+            onClick={() => setStatus("done")}
+            className={[
+              "rounded-2xl px-4 py-3 text-sm font-bold",
+              status === "done"
+                ? "bg-emerald-500 text-white!"
+                : "bg-slate-100 text-slate-700",
+            ].join(" ")}
+          >
+            完了
+          </button>
+        </div>
       </div>
+
+      <button
+        type="submit"
+        className="w-full rounded-2xl bg-pink-500 px-5 py-3 text-sm font-bold text-white! shadow-sm active:scale-[0.98]"
+      >
+        {submitLabel}
+      </button>
     </form>
   );
 }

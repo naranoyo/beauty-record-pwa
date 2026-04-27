@@ -29,7 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/records",
-    label: "一覧",
+    label: "スケジュール",
     match: (pathname) =>
       pathname === "/records" ||
       /^\/records\/[^/]+$/.test(pathname) ||

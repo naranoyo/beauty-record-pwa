@@ -3,8 +3,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import PageContainer from "@/components/layout/PageContainer";
 import RecordForm from "@/components/records/RecordForm";
 import { useAppState } from "@/lib/state";
+import { APP_TEXT } from "@/lib/constants";
 import type { BeautyRecord, RecordFormValues } from "@/lib/types";
 
 function createId() {
@@ -44,6 +46,7 @@ export default function NewRecordPageContent() {
       title: values.title,
       memo: values.memo,
       imageIds: values.imageIds,
+      status: values.status,
       createdAt: now,
       updatedAt: now,
     };
@@ -53,24 +56,20 @@ export default function NewRecordPageContent() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-2xl p-4 pb-24">
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold text-slate-900">新規記録追加</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          美容記録を新しく追加します。
-        </p>
-      </div>
-
+    <PageContainer
+      title={APP_TEXT.scheduleAddTitle}
+      description="美容スケジュールを新しく追加します。"
+    >
       <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
         <RecordForm
           initialValues={{
             date: initialDate,
+            status: "planned",
           }}
-          submitLabel="保存する"
+          submitLabel={APP_TEXT.scheduleSaveButton}
           onSubmit={handleSubmit}
-          onCancel={() => router.push("/records")}
         />
       </div>
-    </main>
+    </PageContainer>
   );
 }
