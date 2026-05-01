@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { BeautyRecord } from "@/lib/types";
 import { getCategoryColor } from "@/lib/category-colors";
@@ -18,6 +18,12 @@ type Props = {
   onSelectDate: (date: string) => void;
   viewMode: CalendarViewMode;
   onChangeViewMode: (mode: CalendarViewMode) => void;
+  onDateClick?: (date: string, startTime?: string) => void;
+  onOpenDayView?: (date: string) => void;
+};
+
+type BeautyRecordWithLegacyTime = BeautyRecord & {
+  time?: string;
 };
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -29,6 +35,10 @@ function toDateKey(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
+function hourToTime(hour: number) {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
 function formatHour(hour: number) {
   if (hour === 0) return "午前0時";
   if (hour < 12) return `午前${hour}時`;
@@ -36,13 +46,18 @@ function formatHour(hour: number) {
   return `午後${hour - 12}時`;
 }
 
+function getRecordStartTime(record: BeautyRecord) {
+  const legacyRecord = record as BeautyRecordWithLegacyTime;
+  return record.startTime ?? legacyRecord.time ?? "09:00";
+}
+
 function getStartHour(record: BeautyRecord) {
-  const hour = Number((record.time ?? "09:00").split(":")[0]);
+  const hour = Number(getRecordStartTime(record).split(":")[0]);
   return Number.isFinite(hour) ? hour : 9;
 }
 
 function getStartMinute(record: BeautyRecord) {
-  const minute = Number((record.time ?? "09:00").split(":")[1]);
+  const minute = Number(getRecordStartTime(record).split(":")[1]);
   return Number.isFinite(minute) ? minute : 0;
 }
 
@@ -52,12 +67,24 @@ export default function CalendarMonth({
   onSelectDate,
   viewMode,
   onChangeViewMode,
+  onDateClick,
+  onOpenDayView,
 }: Props) {
   const [bgMap, setBgMap] = useState<Record<string, string>>({});
 
   const selected = new Date(`${selectedDate}T00:00:00`);
   const year = selected.getFullYear();
   const month = selected.getMonth();
+
+  const openNewRecord = (dateKey: string, startTime = "09:00") => {
+    onSelectDate(dateKey);
+    onDateClick?.(dateKey, startTime);
+  };
+
+  const openDayView = (dateKey: string) => {
+    onSelectDate(dateKey);
+    onOpenDayView?.(dateKey);
+  };
 
   useEffect(() => {
     const loadImages = async () => {
@@ -111,8 +138,8 @@ export default function CalendarMonth({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="flex items-center gap-4">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => onSelectDate(toDateKey(new Date()))}
@@ -121,24 +148,17 @@ export default function CalendarMonth({
             今日
           </button>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-1 items-center justify-center gap-3">
             <button
               type="button"
               onClick={() => moveDate(-1)}
-              className="flex h-12 w-12 items-center justify-center rounded-full text-slate-700 shadow-sm transition hover:bg-slate-100 active:scale-95"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm active:scale-95"
               aria-label="前へ"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-6 w-6"
-              >
-                <path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
-              </svg>
+              ‹
             </button>
 
-            <h2 className="min-w-45 text-center text-2xl font-medium tracking-tight text-slate-950">
+            <h2 className="min-w-0 text-center text-2xl font-bold leading-tight tracking-tight text-slate-950">
               {viewMode === "year"
                 ? `${year}年`
                 : viewMode === "month"
@@ -146,31 +166,28 @@ export default function CalendarMonth({
                   : viewMode === "week"
                     ? weekFirst.getFullYear() === weekLast.getFullYear() &&
                       weekFirst.getMonth() === weekLast.getMonth()
-                      ? `${weekFirst.getFullYear()}年 ${weekFirst.getMonth() + 1}月`
-                      : `${weekFirst.getFullYear()}年 ${weekFirst.getMonth() + 1}月 ～ ${weekLast.getMonth() + 1}月`
+                      ? `${weekFirst.getFullYear()}年 ${
+                          weekFirst.getMonth() + 1
+                        }月`
+                      : `${weekFirst.getFullYear()}年 ${
+                          weekFirst.getMonth() + 1
+                        }月〜${weekLast.getMonth() + 1}月`
                     : `${year}年 ${month + 1}月 ${selected.getDate()}日`}
             </h2>
 
             <button
               type="button"
               onClick={() => moveDate(1)}
-              className="flex h-12 w-12 items-center justify-center rounded-full text-slate-700 shadow-sm transition hover:bg-slate-100 active:scale-95"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm active:scale-95"
               aria-label="次へ"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-6 w-6"
-              >
-                <path d="m8.59 16.59 1.41 1.41L16 12 10 6 8.59 7.41 13.17 12z" />
-              </svg>
+              ›
             </button>
           </div>
         </div>
 
         <p className="text-xs font-medium text-slate-500">
-          Googleカレンダー風のスケジュール表示
+          日・週は時間マスをタップで追加、月は長押しで日表示に移動します
         </p>
       </div>
 
@@ -198,19 +215,24 @@ export default function CalendarMonth({
       </div>
 
       {viewMode === "day" ? (
-        <DayView records={records} selectedDate={selectedDate} bgMap={bgMap} />
+        <DayView
+          records={records}
+          selectedDate={selectedDate}
+          onAddDate={openNewRecord}
+        />
       ) : viewMode === "week" ? (
         <WeekView
           records={records}
           selectedDate={selectedDate}
           weekDays={weekDays}
+          onSelectDate={onSelectDate}
+          onAddDate={openNewRecord}
         />
       ) : viewMode === "year" ? (
         <YearView
           year={year}
           selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
-          onChangeViewMode={onChangeViewMode}
+          onOpenDayView={openDayView}
         />
       ) : (
         <CalendarGrid
@@ -218,17 +240,19 @@ export default function CalendarMonth({
           records={records}
           selectedDate={selectedDate}
           onSelectDate={onSelectDate}
+          onOpenDayView={openDayView}
           currentMonth={month}
           bgMap={bgMap}
         />
       )}
 
-      <Link
-        href={`/records/new?date=${selectedDate}`}
-        className="block rounded-2xl bg-pink-500 py-3 text-center text-sm font-bold text-white! shadow-sm active:scale-[0.98]"
+      <button
+        type="button"
+        onClick={() => openNewRecord(selectedDate, "09:00")}
+        className="block w-full rounded-2xl bg-pink-500 py-3 text-center text-sm font-bold text-white! shadow-sm active:scale-[0.98]"
       >
         {APP_TEXT.scheduleAddButton}
-      </Link>
+      </button>
     </div>
   );
 }
@@ -236,14 +260,16 @@ export default function CalendarMonth({
 function DayView({
   records,
   selectedDate,
+  onAddDate,
 }: {
   records: BeautyRecord[];
   selectedDate: string;
-  bgMap: Record<string, string>;
+  onAddDate: (date: string, startTime?: string) => void;
 }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       {HOURS.map((hour) => {
+        const startTime = hourToTime(hour);
         const hourRecords = records.filter(
           (record) =>
             record.date === selectedDate && getStartHour(record) === hour
@@ -252,17 +278,24 @@ function DayView({
         return (
           <div
             key={hour}
-            className="grid min-h-18 grid-cols-[72px_1fr] border-b border-slate-100"
+            role="button"
+            tabIndex={0}
+            onClick={() => onAddDate(selectedDate, startTime)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onAddDate(selectedDate, startTime);
+            }}
+            className="grid min-h-18 cursor-pointer grid-cols-[72px_1fr] border-b border-slate-100 text-left active:bg-pink-50"
           >
             <div className="border-r border-slate-100 px-2 pt-2 text-right text-xs font-bold text-slate-500">
               {formatHour(hour)}
             </div>
 
-            <div className="bg-pink-50/30 p-2">
+            <div className="min-h-18 bg-pink-50/30 p-2">
               {hourRecords.map((record) => (
                 <Link
                   key={record.id}
                   href={`/records/${record.id}`}
+                  onClick={(e) => e.stopPropagation()}
                   className="mb-1 block rounded-xl px-3 py-2 text-xs font-bold text-white!"
                   style={{
                     backgroundColor: getCategoryColor(record.category),
@@ -270,7 +303,7 @@ function DayView({
                 >
                   {record.title}
                   <br />
-                  {record.time ?? "09:00"}
+                  {getRecordStartTime(record)}
                 </Link>
               ))}
             </div>
@@ -285,145 +318,175 @@ function WeekView({
   records,
   selectedDate,
   weekDays,
+  onSelectDate,
+  onAddDate,
 }: {
   records: BeautyRecord[];
   selectedDate: string;
   weekDays: Date[];
+  onSelectDate: (date: string) => void;
+  onAddDate: (date: string, startTime?: string) => void;
 }) {
   const hourHeight = 72;
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] border-b border-slate-100">
-        <div className="flex items-end justify-center bg-white pb-3 text-[11px] font-bold text-slate-500">
-          GMT+09
-        </div>
+    <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="min-w-160">
+        <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] border-b border-slate-100">
+          <div className="flex items-end justify-center bg-white pb-3 text-[11px] font-bold text-slate-500">
+            GMT+09
+          </div>
 
-        {weekDays.map((date) => {
-          const dateKey = toDateKey(date);
-          const day = date.getDay();
-          const holiday = getHolidayName(dateKey);
-          const isSelected = dateKey === selectedDate;
+          {weekDays.map((date) => {
+            const dateKey = toDateKey(date);
+            const day = date.getDay();
+            const holiday = getHolidayName(dateKey);
+            const isSelected = dateKey === selectedDate;
 
-          return (
-            <button
-              key={dateKey}
-              type="button"
-              className={[
-                "min-h-20 border-l border-slate-100 p-2 text-center",
-                day === 0 || holiday
-                  ? "bg-red-50/50"
-                  : day === 6
-                    ? "bg-blue-50/50"
-                    : isSelected
-                      ? "bg-green-50"
-                      : "bg-white",
-              ].join(" ")}
-            >
-              <div
+            return (
+              <button
+                key={dateKey}
+                type="button"
+                onClick={() => onSelectDate(dateKey)}
                 className={[
-                  "text-xs font-bold",
+                  "min-h-20 border-l border-slate-100 p-2 text-center active:bg-pink-50",
                   day === 0 || holiday
-                    ? "text-red-500"
+                    ? "bg-red-50/50"
                     : day === 6
-                      ? "text-blue-500"
-                      : "text-slate-600",
+                      ? "bg-blue-50/50"
+                      : isSelected
+                        ? "bg-green-50"
+                        : "bg-white",
                 ].join(" ")}
               >
-                {["日", "月", "火", "水", "木", "金", "土"][day]}
-              </div>
-
-              <div
-                className={[
-                  "mx-auto mt-1 flex h-10 w-10 items-center justify-center rounded-full text-xl font-bold",
-                  isSelected
-                    ? "bg-green-500 text-white!"
-                    : day === 0 || holiday
+                <div
+                  className={[
+                    "text-xs font-bold",
+                    day === 0 || holiday
                       ? "text-red-500"
                       : day === 6
                         ? "text-blue-500"
-                        : "text-slate-900",
-                ].join(" ")}
-              >
-                {date.getDate()}
-              </div>
-
-              {holiday ? (
-                <div className="mt-1 truncate rounded-md bg-emerald-600 px-1 py-1 text-[10px] font-bold text-white!">
-                  {holiday}
+                        : "text-slate-600",
+                  ].join(" ")}
+                >
+                  {["日", "月", "火", "水", "木", "金", "土"][day]}
                 </div>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
 
-      <div className="relative grid grid-cols-[64px_repeat(7,minmax(0,1fr))]">
-        <div>
-          {HOURS.map((hour) => (
-            <div
-              key={hour}
-              className="h-18 border-b border-slate-100 px-2 pt-2 text-right text-xs font-bold text-slate-500"
-            >
-              {formatHour(hour)}
-            </div>
-          ))}
+                <div
+                  className={[
+                    "mx-auto mt-1 flex h-10 w-10 items-center justify-center rounded-full text-xl font-bold",
+                    isSelected
+                      ? "bg-green-500 text-white!"
+                      : day === 0 || holiday
+                        ? "text-red-500"
+                        : day === 6
+                          ? "text-blue-500"
+                          : "text-slate-900",
+                  ].join(" ")}
+                >
+                  {date.getDate()}
+                </div>
+
+                {holiday ? (
+                  <div className="mt-1 truncate rounded-md bg-emerald-600 px-1 py-1 text-[10px] font-bold text-white!">
+                    {holiday}
+                  </div>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
 
-        {weekDays.map((date) => {
-          const dateKey = toDateKey(date);
-          const day = date.getDay();
-          const holiday = getHolidayName(dateKey);
+        <div className="relative grid grid-cols-[64px_repeat(7,minmax(0,1fr))]">
+          <div>
+            {HOURS.map((hour) => (
+              <div
+                key={hour}
+                className="h-18 border-b border-slate-100 px-2 pt-2 text-right text-xs font-bold text-slate-500"
+              >
+                {formatHour(hour)}
+              </div>
+            ))}
+          </div>
 
-          const dayRecords = records.filter(
-            (record) => record.date === dateKey
-          );
+          {weekDays.map((date) => {
+            const dateKey = toDateKey(date);
+            const day = date.getDay();
+            const holiday = getHolidayName(dateKey);
 
-          return (
-            <div
-              key={dateKey}
-              className={[
-                "relative border-l border-slate-100",
-                day === 0 || holiday
-                  ? "bg-red-50/30"
-                  : day === 6
-                    ? "bg-blue-50/40"
-                    : dateKey === selectedDate
-                      ? "bg-green-50/40"
-                      : "bg-white",
-              ].join(" ")}
-              style={{ height: `${hourHeight * 24}px` }}
-            >
-              {HOURS.map((hour) => (
-                <div key={hour} className="h-18 border-b border-slate-100" />
-              ))}
+            const dayRecords = records.filter(
+              (record) => record.date === dateKey
+            );
 
-              {dayRecords.map((record) => {
-                const hour = getStartHour(record);
-                const minute = getStartMinute(record);
-                const top = hour * hourHeight + (minute / 60) * hourHeight;
+            return (
+              <div
+                key={dateKey}
+                role="button"
+                tabIndex={0}
+                onClick={() => onSelectDate(dateKey)}
+                className={[
+                  "relative border-l border-slate-100 text-left",
+                  day === 0 || holiday
+                    ? "bg-red-50/30"
+                    : day === 6
+                      ? "bg-blue-50/40"
+                      : dateKey === selectedDate
+                        ? "bg-green-50/40"
+                        : "bg-white",
+                ].join(" ")}
+                style={{ height: `${hourHeight * 24}px` }}
+              >
+                {HOURS.map((hour) => {
+                  const startTime = hourToTime(hour);
 
-                return (
-                  <Link
-                    key={record.id}
-                    href={`/records/${record.id}`}
-                    className="absolute left-1 right-1 z-10 rounded-lg px-2 py-1 text-[11px] font-bold text-white! shadow-sm"
-                    style={{
-                      top: `${top + 4}px`,
-                      minHeight: "42px",
-                      backgroundColor: getCategoryColor(record.category),
-                    }}
-                  >
-                    <span className="line-clamp-1">{record.title}</span>
-                    <span className="line-clamp-1 text-[10px]">
-                      {record.time ?? "09:00"}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          );
-        })}
+                  return (
+                    <div
+                      key={hour}
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddDate(dateKey, startTime);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.stopPropagation();
+                          onAddDate(dateKey, startTime);
+                        }
+                      }}
+                      className="h-18 cursor-pointer border-b border-slate-100 active:bg-pink-50"
+                    />
+                  );
+                })}
+
+                {dayRecords.map((record) => {
+                  const hour = getStartHour(record);
+                  const minute = getStartMinute(record);
+                  const top = hour * hourHeight + (minute / 60) * hourHeight;
+
+                  return (
+                    <Link
+                      key={record.id}
+                      href={`/records/${record.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute left-1 right-1 z-10 rounded-lg px-2 py-1 text-[11px] font-bold text-white! shadow-sm"
+                      style={{
+                        top: `${top + 4}px`,
+                        minHeight: "42px",
+                        backgroundColor: getCategoryColor(record.category),
+                      }}
+                    >
+                      <span className="line-clamp-1">{record.title}</span>
+                      <span className="line-clamp-1 text-[10px]">
+                        {getRecordStartTime(record)}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -434,6 +497,7 @@ function CalendarGrid({
   records,
   selectedDate,
   onSelectDate,
+  onOpenDayView,
   currentMonth,
   bgMap,
 }: {
@@ -441,9 +505,28 @@ function CalendarGrid({
   records: BeautyRecord[];
   selectedDate: string;
   onSelectDate: (date: string) => void;
+  onOpenDayView: (date: string) => void;
   currentMonth: number;
   bgMap: Record<string, string>;
 }) {
+  const longPressTimer = useRef<number | null>(null);
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const startLongPress = (dateKey: string) => {
+    clearLongPress();
+
+    longPressTimer.current = window.setTimeout(() => {
+      onOpenDayView(dateKey);
+      longPressTimer.current = null;
+    }, 550);
+  };
+
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50 text-center text-xs font-bold">
@@ -487,8 +570,13 @@ function CalendarGrid({
               key={dateKey}
               type="button"
               onClick={() => onSelectDate(dateKey)}
+              onDoubleClick={() => onOpenDayView(dateKey)}
+              onPointerDown={() => startLongPress(dateKey)}
+              onPointerUp={clearLongPress}
+              onPointerLeave={clearLongPress}
+              onPointerCancel={clearLongPress}
               className={[
-                "relative min-h-24 border-r border-b border-slate-100 p-2 text-left",
+                "relative min-h-24 touch-manipulation border-r border-b border-slate-100 p-2 text-left active:bg-pink-50",
                 isSelected ? "bg-pink-50" : "bg-white",
                 !isCurrentMonth ? "opacity-45" : "",
               ].join(" ")}
@@ -543,13 +631,11 @@ function CalendarGrid({
 function YearView({
   year,
   selectedDate,
-  onSelectDate,
-  onChangeViewMode,
+  onOpenDayView,
 }: {
   year: number;
   selectedDate: string;
-  onSelectDate: (date: string) => void;
-  onChangeViewMode: (mode: CalendarViewMode) => void;
+  onOpenDayView: (date: string) => void;
 }) {
   return (
     <div className="rounded-3xl border border-pink-100 bg-white p-4 shadow-sm">
@@ -560,8 +646,7 @@ function YearView({
             year={year}
             month={monthIndex}
             selectedDate={selectedDate}
-            onSelectDate={onSelectDate}
-            onChangeViewMode={onChangeViewMode}
+            onOpenDayView={onOpenDayView}
           />
         ))}
       </div>
@@ -573,14 +658,12 @@ function MiniMonth({
   year,
   month,
   selectedDate,
-  onSelectDate,
-  onChangeViewMode,
+  onOpenDayView,
 }: {
   year: number;
   month: number;
   selectedDate: string;
-  onSelectDate: (date: string) => void;
-  onChangeViewMode: (mode: CalendarViewMode) => void;
+  onOpenDayView: (date: string) => void;
 }) {
   const firstDay = new Date(year, month, 1);
   const startDate = new Date(firstDay);
@@ -594,16 +677,9 @@ function MiniMonth({
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => {
-          onSelectDate(toDateKey(new Date(year, month, 1)));
-          onChangeViewMode("month");
-        }}
-        className="mb-3 text-left text-xl font-bold text-slate-950"
-      >
+      <h3 className="mb-3 text-left text-xl font-bold text-slate-950">
         {month + 1}月
-      </button>
+      </h3>
 
       <div className="grid grid-cols-7 gap-y-2 text-center text-sm font-bold">
         {["日", "月", "火", "水", "木", "金", "土"].map((day, i) => (
@@ -632,12 +708,9 @@ function MiniMonth({
             <button
               key={dateKey}
               type="button"
-              onClick={() => {
-                onSelectDate(dateKey);
-                onChangeViewMode("day");
-              }}
+              onClick={() => onOpenDayView(dateKey)}
               className={[
-                "mx-auto flex h-7 w-7 items-center justify-center rounded-full text-sm",
+                "mx-auto flex h-7 w-7 items-center justify-center rounded-full text-sm active:bg-pink-100",
                 isSelected ? "bg-pink-300 text-white!" : "",
                 !isCurrentMonth ? "opacity-25" : "",
                 day === 0 || holiday

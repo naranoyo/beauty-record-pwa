@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageContainer from "@/components/layout/PageContainer";
 import RecordForm from "@/components/records/RecordForm";
@@ -31,12 +32,19 @@ export default function NewRecordPageContent() {
   const searchParams = useSearchParams();
   const { addRecord } = useAppState();
 
+  const [message, setMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
   const dateParam = searchParams.get("date");
 
   const initialDate =
     isValidDateString(dateParam) && dateParam ? dateParam : getTodayString();
 
   const handleSubmit = (values: RecordFormValues) => {
+    if (isSaving) return;
+
+    setIsSaving(true);
+
     const now = new Date().toISOString();
 
     const newRecord: BeautyRecord = {
@@ -55,27 +63,40 @@ export default function NewRecordPageContent() {
     };
 
     addRecord(newRecord);
-    router.push(`/records/${newRecord.id}`);
+
+    setMessage("スケジュールを保存しました");
+
+    setTimeout(() => {
+      router.push("/calendar");
+    }, 1200);
   };
 
   return (
-    <PageContainer
-      title={APP_TEXT.scheduleAddTitle}
-      description="美容スケジュールを新しく追加します。"
-    >
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <RecordForm
-          initialValues={{
-            date: initialDate,
-            time: "09:00",
-            startTime: "09:00",
-            endTime: "10:00",
-            status: "planned",
-          }}
-          submitLabel={APP_TEXT.scheduleSaveButton}
-          onSubmit={handleSubmit}
-        />
-      </div>
-    </PageContainer>
+    <>
+      <PageContainer
+        title={APP_TEXT.scheduleAddTitle}
+        description="美容スケジュールを新しく追加します。"
+      >
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+          <RecordForm
+            initialValues={{
+              date: initialDate,
+              time: "09:00",
+              startTime: "09:00",
+              endTime: "10:00",
+              status: "planned",
+            }}
+            submitLabel={isSaving ? "保存中..." : APP_TEXT.scheduleSaveButton}
+            onSubmit={handleSubmit}
+          />
+        </div>
+      </PageContainer>
+
+      {message && (
+        <div className="fixed bottom-20 left-1/2 z-9999 -translate-x-1/2 rounded-xl bg-black/80 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          {message}
+        </div>
+      )}
+    </>
   );
 }
