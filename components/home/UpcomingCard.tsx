@@ -48,7 +48,7 @@ export default function UpcomingCard({ records }: Props) {
           href="/records/new"
           className="rounded-full bg-pink-500 px-4 py-2 text-xs font-bold text-white! shadow-sm active:scale-95"
         >
-          ＋追加
+          {APP_TEXT.scheduleAddButton}
         </Link>
       </div>
 

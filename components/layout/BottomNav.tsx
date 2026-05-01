@@ -24,7 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/records/new",
-    label: "追加",
+    label: "スケジュール追加",
     match: (pathname) => pathname === "/records/new",
   },
   {

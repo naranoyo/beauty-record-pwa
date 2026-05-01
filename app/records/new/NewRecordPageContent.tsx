@@ -42,6 +42,9 @@ export default function NewRecordPageContent() {
     const newRecord: BeautyRecord = {
       id: createId(),
       date: values.date,
+      time: values.startTime,
+      startTime: values.startTime,
+      endTime: values.endTime,
       category: values.category,
       title: values.title,
       memo: values.memo,
@@ -64,6 +67,9 @@ export default function NewRecordPageContent() {
         <RecordForm
           initialValues={{
             date: initialDate,
+            time: "09:00",
+            startTime: "09:00",
+            endTime: "10:00",
             status: "planned",
           }}
           submitLabel={APP_TEXT.scheduleSaveButton}

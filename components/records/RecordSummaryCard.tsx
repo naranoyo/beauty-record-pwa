@@ -18,6 +18,24 @@ type Props = {
   onDone?: (record: BeautyRecord) => void;
 };
 
+function getDurationLabel(start?: string, end?: string) {
+  if (!start || !end) return null;
+
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+
+  const startMin = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+
+  if (endMin <= startMin) return null;
+
+  const diff = endMin - startMin;
+  const h = Math.floor(diff / 60);
+  const m = diff % 60;
+
+  return `${h}時間${m}分`;
+}
+
 export default function RecordSummaryCard({
   record,
   allRecords,
@@ -26,6 +44,11 @@ export default function RecordSummaryCard({
 }: Props) {
   const daysFromPrevious = getDaysFromPreviousSameCategory(record, allRecords);
   const isDone = record.status === "done";
+
+  const start = record.startTime ?? record.time ?? "09:00";
+  const end = record.endTime;
+
+  const duration = getDurationLabel(start, end);
 
   return (
     <article
@@ -58,6 +81,18 @@ export default function RecordSummaryCard({
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
               {record.date}
             </span>
+
+            {/* 時間表示 */}
+            <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-600">
+              {end ? `${start}〜${end}` : start}
+            </span>
+
+            {/* 使用時間 */}
+            {duration && (
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-600">
+                {duration}
+              </span>
+            )}
 
             {daysFromPrevious !== null ? (
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">

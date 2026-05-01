@@ -2,16 +2,15 @@
 
 "use client";
 
-import { useState } from "react";
-import type { RecordCategory, RecordFormValues } from "@/lib/types";
-import { CATEGORY_ITEMS } from "@/lib/category-colors";
-import { categoryLabel } from "@/lib/record-utils";
+import { useMemo, useState } from "react";
+import type { RecordFormValues } from "@/lib/types";
+import { getAllCategories, getCategoryLabel } from "@/lib/category-colors";
 import RecordImageUploader from "@/components/records/RecordImageUploader";
 import RecordImagePreview from "@/components/records/RecordImagePreview";
 
 type Props = {
   initialValues?: Partial<RecordFormValues>;
-  submitLabel: string;
+  submitLabel?: string;
   onSubmit: (values: RecordFormValues) => void;
 };
 
@@ -25,58 +24,106 @@ function getTodayKey() {
 
 export default function RecordForm({
   initialValues,
-  submitLabel,
+  submitLabel = "保存",
   onSubmit,
 }: Props) {
-  const [date, setDate] = useState(initialValues?.date ?? getTodayKey());
+  const categories = useMemo(() => getAllCategories(), []);
 
-  const [category, setCategory] = useState<RecordCategory>(
-    initialValues?.category ?? CATEGORY_ITEMS[0]
-  );
+  const [form, setForm] = useState<RecordFormValues>({
+    date: initialValues?.date ?? getTodayKey(),
+    time: initialValues?.time ?? initialValues?.startTime ?? "09:00",
+    startTime: initialValues?.startTime ?? initialValues?.time ?? "09:00",
+    endTime: initialValues?.endTime ?? "10:00",
+    category: initialValues?.category ?? "epilation",
+    title: initialValues?.title ?? "",
+    memo: initialValues?.memo ?? "",
+    imageIds: initialValues?.imageIds ?? [],
+    status: initialValues?.status ?? "planned",
+  });
 
-  const [title, setTitle] = useState(initialValues?.title ?? "");
-  const [memo, setMemo] = useState(initialValues?.memo ?? "");
-  const [status, setStatus] = useState(initialValues?.status ?? "planned");
+  const duration = useMemo(() => {
+    const [sh, sm] = form.startTime.split(":").map(Number);
+    const [eh, em] = form.endTime.split(":").map(Number);
 
-  const [imageIds, setImageIds] = useState<string[]>(
-    initialValues?.imageIds ?? []
-  );
+    const start = sh * 60 + sm;
+    const end = eh * 60 + em;
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return 0;
+    if (end <= start) return 0;
 
-    onSubmit({
-      title: title.trim() || "タイトルなし",
-      date,
-      category,
-      memo,
-      status,
-      imageIds,
-    });
-  };
+    return end - start;
+  }, [form.startTime, form.endTime]);
+
+  const durationLabel =
+    duration > 0 ? `${Math.floor(duration / 60)}時間${duration % 60}分` : "-";
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <label className="grid gap-2">
-        <span className="text-sm font-bold text-slate-700">日付</span>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-pink-400"
-        />
-      </label>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+
+        onSubmit({
+          ...form,
+          title: form.title.trim() || "タイトルなし",
+          time: form.startTime,
+        });
+      }}
+      className="space-y-6"
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="grid gap-2">
+          <span className="text-sm font-bold text-slate-700">日付</span>
+          <input
+            type="date"
+            value={form.date}
+            onChange={(e) => setForm({ ...form, date: e.target.value })}
+            className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-pink-400"
+          />
+        </label>
+
+        <div className="grid grid-cols-2 gap-2">
+          <label className="grid gap-2">
+            <span className="text-sm font-bold text-slate-700">開始</span>
+            <input
+              type="time"
+              value={form.startTime}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  startTime: e.target.value,
+                  time: e.target.value,
+                })
+              }
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-pink-400"
+            />
+          </label>
+
+          <label className="grid gap-2">
+            <span className="text-sm font-bold text-slate-700">終了</span>
+            <input
+              type="time"
+              value={form.endTime}
+              onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-pink-400"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-pink-50 px-4 py-3 text-sm font-bold text-pink-600">
+        使用時間：{durationLabel}
+      </div>
 
       <label className="grid gap-2">
         <span className="text-sm font-bold text-slate-700">カテゴリ</span>
         <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value as RecordCategory)}
+          value={form.category}
+          onChange={(e) => setForm({ ...form, category: e.target.value })}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-pink-400"
         >
-          {CATEGORY_ITEMS.map((item) => (
-            <option key={item} value={item}>
-              {categoryLabel(item)}
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {getCategoryLabel(category)}
             </option>
           ))}
         </select>
@@ -85,8 +132,8 @@ export default function RecordForm({
       <label className="grid gap-2">
         <span className="text-sm font-bold text-slate-700">タイトル</span>
         <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-pink-400"
           placeholder="例：脱毛、髪型、トレーニングなど"
         />
@@ -95,8 +142,8 @@ export default function RecordForm({
       <label className="grid gap-2">
         <span className="text-sm font-bold text-slate-700">メモ</span>
         <textarea
-          value={memo}
-          onChange={(e) => setMemo(e.target.value)}
+          value={form.memo}
+          onChange={(e) => setForm({ ...form, memo: e.target.value })}
           rows={5}
           className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-pink-400"
           placeholder="メモを入力"
@@ -106,12 +153,15 @@ export default function RecordForm({
       <div className="grid gap-3">
         <span className="text-sm font-bold text-slate-700">画像</span>
 
-        <RecordImageUploader imageIds={imageIds} onChange={setImageIds} />
+        <RecordImageUploader
+          imageIds={form.imageIds}
+          onChange={(imageIds) => setForm({ ...form, imageIds })}
+        />
 
         <RecordImagePreview
-          imageIds={imageIds}
+          imageIds={form.imageIds}
           editable
-          onChange={setImageIds}
+          onChange={(imageIds) => setForm({ ...form, imageIds })}
         />
       </div>
 
@@ -121,10 +171,10 @@ export default function RecordForm({
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => setStatus("planned")}
+            onClick={() => setForm({ ...form, status: "planned" })}
             className={[
               "rounded-2xl px-4 py-3 text-sm font-bold",
-              status === "planned"
+              form.status === "planned"
                 ? "bg-yellow-400 text-white!"
                 : "bg-slate-100 text-slate-700",
             ].join(" ")}
@@ -134,10 +184,10 @@ export default function RecordForm({
 
           <button
             type="button"
-            onClick={() => setStatus("done")}
+            onClick={() => setForm({ ...form, status: "done" })}
             className={[
               "rounded-2xl px-4 py-3 text-sm font-bold",
-              status === "done"
+              form.status === "done"
                 ? "bg-emerald-500 text-white!"
                 : "bg-slate-100 text-slate-700",
             ].join(" ")}

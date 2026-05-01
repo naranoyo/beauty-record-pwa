@@ -11,6 +11,8 @@ import RecordSummaryCard from "@/components/records/RecordSummaryCard";
 import { useAppState } from "@/lib/state";
 import { APP_TEXT } from "@/lib/constants";
 
+type CalendarViewMode = "year" | "month" | "week" | "day";
+
 function toDateKey(date: Date) {
   const y = date.getFullYear();
   const m = `${date.getMonth() + 1}`.padStart(2, "0");
@@ -33,7 +35,7 @@ export default function CalendarPage() {
   const todayKey = toDateKey(today);
 
   const [selectedDate, setSelectedDate] = useState(todayKey);
-  const [displayDate, setDisplayDate] = useState(today);
+  const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
 
   const selectedRecords = useMemo(() => {
     return state.records.filter((record) => record.date === selectedDate);
@@ -44,18 +46,9 @@ export default function CalendarPage() {
       <CalendarMonth
         records={state.records}
         selectedDate={selectedDate}
-        displayDate={displayDate}
         onSelectDate={setSelectedDate}
-        onPrevMonth={() => {
-          setDisplayDate(
-            new Date(displayDate.getFullYear(), displayDate.getMonth() - 1, 1)
-          );
-        }}
-        onNextMonth={() => {
-          setDisplayDate(
-            new Date(displayDate.getFullYear(), displayDate.getMonth() + 1, 1)
-          );
-        }}
+        viewMode={viewMode}
+        onChangeViewMode={setViewMode}
       />
 
       <section className="mt-6 rounded-4xl border border-pink-100 bg-white p-5 shadow-sm">

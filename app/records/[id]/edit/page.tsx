@@ -26,6 +26,9 @@ export default function EditRecordPage() {
     updateRecord({
       ...record,
       date: values.date,
+      time: values.startTime,
+      startTime: values.startTime,
+      endTime: values.endTime,
       category: values.category,
       title: values.title,
       memo: values.memo,
@@ -75,6 +78,9 @@ export default function EditRecordPage() {
         <RecordForm
           initialValues={{
             date: record.date,
+            time: record.startTime ?? record.time ?? "09:00",
+            startTime: record.startTime ?? record.time ?? "09:00",
+            endTime: record.endTime ?? "10:00",
             category: record.category,
             title: record.title,
             memo: record.memo,

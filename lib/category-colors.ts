@@ -3,18 +3,11 @@
 import type { CSSProperties } from "react";
 import type { RecordCategory } from "@/lib/types";
 
-export type CategoryColorMap = Record<RecordCategory, string>;
-export type CategoryLabelMap = Record<RecordCategory, string>;
+export type CategoryColorMap = Record<string, string>;
+export type CategoryLabelMap = Record<string, string>;
 
 const COLOR_STORAGE_KEY = "beauty-record-pwa-category-colors";
 const LABEL_STORAGE_KEY = "beauty-record-pwa-category-labels";
-const CATEGORY_VERSION_KEY = "beauty-record-pwa-category-version";
-
-/**
- * カテゴリ構成を変更したら、この値を変更します。
- * 古いlocalStorageの色ズレを防ぐためです。
- */
-const CATEGORY_VERSION = "2026-04-category-v2";
 
 export const CATEGORY_ITEMS: RecordCategory[] = [
   "epilation",
@@ -23,17 +16,23 @@ export const CATEGORY_ITEMS: RecordCategory[] = [
   "training",
   "work",
   "stretch",
+  "hospital",
+  "shopping",
+  "pachi",
   "other",
 ];
 
 export const DEFAULT_CATEGORY_COLORS: CategoryColorMap = {
-  epilation: "#ec4899", // 脱毛：ピンク
-  hair: "#10b981", // 髪型：緑
-  diet: "#f97316", // ダイエット：オレンジ
-  training: "#3b82f6", // トレーニング：青
-  work: "#a855f7", // 仕事：紫
-  stretch: "#eab308", // ストレッチ：黄
-  other: "#94a3b8", // その他：グレー
+  epilation: "#ec4899",
+  hair: "#10b981",
+  diet: "#f97316",
+  training: "#3b82f6",
+  work: "#a855f7",
+  stretch: "#facc15",
+  hospital: "#f08080",
+  shopping: "#00ffff",
+  pachi: "#bdb76b",
+  other: "#94a3b8",
 };
 
 export const DEFAULT_CATEGORY_LABELS: CategoryLabelMap = {
@@ -43,179 +42,101 @@ export const DEFAULT_CATEGORY_LABELS: CategoryLabelMap = {
   training: "トレーニング",
   work: "仕事",
   stretch: "ストレッチ",
+  hospital: "病院",
+  shopping: "買い物",
+  pachi: "パチ",
   other: "その他",
 };
 
-const LEGACY_COLOR_MAP: Record<string, string> = {
-  pink: "#ec4899",
-  purple: "#a855f7",
-  blue: "#3b82f6",
-  orange: "#f97316",
-  green: "#10b981",
-  emerald: "#10b981",
-  slate: "#64748b",
-  gray: "#94a3b8",
-  red: "#ef4444",
-  yellow: "#eab308",
-};
-
-function canUseStorage() {
+function isBrowser() {
   return typeof window !== "undefined";
 }
 
-function resetOldCategoryStorageIfNeeded() {
-  if (!canUseStorage()) return;
-
-  const currentVersion = window.localStorage.getItem(CATEGORY_VERSION_KEY);
-
-  if (currentVersion === CATEGORY_VERSION) return;
-
-  window.localStorage.removeItem(COLOR_STORAGE_KEY);
-  window.localStorage.removeItem(LABEL_STORAGE_KEY);
-  window.localStorage.setItem(CATEGORY_VERSION_KEY, CATEGORY_VERSION);
-}
-
-function normalizeColor(value: unknown, fallback: string) {
-  if (typeof value !== "string") return fallback;
-
-  if (/^#[0-9a-fA-F]{6}$/.test(value)) {
-    return value;
-  }
-
-  if (/^#[0-9a-fA-F]{3}$/.test(value)) {
-    const r = value[1];
-    const g = value[2];
-    const b = value[3];
-
-    return `#${r}${r}${g}${g}${b}${b}`;
-  }
-
-  return LEGACY_COLOR_MAP[value] ?? fallback;
-}
-
-export function loadCategoryColors(): CategoryColorMap {
-  if (!canUseStorage()) return DEFAULT_CATEGORY_COLORS;
-
-  resetOldCategoryStorageIfNeeded();
+function readJson<T>(key: string, fallback: T): T {
+  if (!isBrowser()) return fallback;
 
   try {
-    const raw = window.localStorage.getItem(COLOR_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : {};
-
-    const colors = { ...DEFAULT_CATEGORY_COLORS };
-
-    CATEGORY_ITEMS.forEach((category) => {
-      colors[category] = normalizeColor(
-        parsed?.[category],
-        DEFAULT_CATEGORY_COLORS[category]
-      );
-    });
-
-    return colors;
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
   } catch {
-    return DEFAULT_CATEGORY_COLORS;
+    return fallback;
   }
+}
+
+function writeJson<T>(key: string, value: T) {
+  if (!isBrowser()) return;
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+export function getCategoryColors(): CategoryColorMap {
+  return {
+    ...DEFAULT_CATEGORY_COLORS,
+    ...readJson<CategoryColorMap>(COLOR_STORAGE_KEY, {}),
+  };
+}
+
+export function getCategoryLabels(): CategoryLabelMap {
+  return {
+    ...DEFAULT_CATEGORY_LABELS,
+    ...readJson<CategoryLabelMap>(LABEL_STORAGE_KEY, {}),
+  };
 }
 
 export function saveCategoryColors(colors: CategoryColorMap) {
-  if (!canUseStorage()) return;
-
-  const normalized = { ...DEFAULT_CATEGORY_COLORS };
-
-  CATEGORY_ITEMS.forEach((category) => {
-    normalized[category] = normalizeColor(
-      colors[category],
-      DEFAULT_CATEGORY_COLORS[category]
-    );
-  });
-
-  window.localStorage.setItem(COLOR_STORAGE_KEY, JSON.stringify(normalized));
-  window.localStorage.setItem(CATEGORY_VERSION_KEY, CATEGORY_VERSION);
-}
-
-export function loadCategoryLabels(): CategoryLabelMap {
-  if (!canUseStorage()) return DEFAULT_CATEGORY_LABELS;
-
-  resetOldCategoryStorageIfNeeded();
-
-  try {
-    const raw = window.localStorage.getItem(LABEL_STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : {};
-
-    const labels = { ...DEFAULT_CATEGORY_LABELS };
-
-    CATEGORY_ITEMS.forEach((category) => {
-      if (typeof parsed?.[category] === "string") {
-        labels[category] = parsed[category];
-      }
-    });
-
-    return labels;
-  } catch {
-    return DEFAULT_CATEGORY_LABELS;
-  }
+  writeJson(COLOR_STORAGE_KEY, colors);
 }
 
 export function saveCategoryLabels(labels: CategoryLabelMap) {
-  if (!canUseStorage()) return;
-
-  const normalized = { ...DEFAULT_CATEGORY_LABELS };
-
-  CATEGORY_ITEMS.forEach((category) => {
-    normalized[category] =
-      labels[category]?.trim() || DEFAULT_CATEGORY_LABELS[category];
-  });
-
-  window.localStorage.setItem(LABEL_STORAGE_KEY, JSON.stringify(normalized));
-  window.localStorage.setItem(CATEGORY_VERSION_KEY, CATEGORY_VERSION);
+  writeJson(LABEL_STORAGE_KEY, labels);
 }
 
-export function resetCategorySettings() {
-  if (!canUseStorage()) return;
-
-  window.localStorage.removeItem(COLOR_STORAGE_KEY);
-  window.localStorage.removeItem(LABEL_STORAGE_KEY);
-  window.localStorage.setItem(CATEGORY_VERSION_KEY, CATEGORY_VERSION);
+export function getCategoryColor(category: string) {
+  return getCategoryColors()[category] ?? DEFAULT_CATEGORY_COLORS.other;
 }
 
-function hexToRgba(hex: string, alpha: number) {
-  const color = normalizeColor(hex, "#94a3b8");
-  const clean = color.replace("#", "");
-
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+export function getCategoryLabel(category: string) {
+  return getCategoryLabels()[category] ?? category;
 }
 
-export function getCategoryColor(category: RecordCategory | string) {
-  const colors = loadCategoryColors();
+export function getAllCategories(): string[] {
+  const colors = getCategoryColors();
+  const labels = getCategoryLabels();
 
-  return colors[category as RecordCategory] ?? DEFAULT_CATEGORY_COLORS.other;
+  return Array.from(
+    new Set([...CATEGORY_ITEMS, ...Object.keys(colors), ...Object.keys(labels)])
+  );
 }
 
-export function getCategoryLabel(category: RecordCategory | string) {
-  const labels = loadCategoryLabels();
+export function addCategory(categoryId: string, label: string, color: string) {
+  const id = categoryId.trim();
+  if (!id) return;
 
-  return labels[category as RecordCategory] ?? DEFAULT_CATEGORY_LABELS.other;
+  const colors = getCategoryColors();
+  const labels = getCategoryLabels();
+
+  colors[id] = color;
+  labels[id] = label.trim() || id;
+
+  saveCategoryColors(colors);
+  saveCategoryLabels(labels);
 }
 
-export function getCategoryBadgeStyle(
-  category: RecordCategory | string
-): CSSProperties {
+export function categoryBadgeStyle(category: string): CSSProperties {
   const color = getCategoryColor(category);
 
   return {
+    backgroundColor: `${color}22`,
     color,
-    backgroundColor: hexToRgba(color, 0.14),
   };
 }
 
-export function getCategoryDotStyle(
-  category: RecordCategory | string
-): CSSProperties {
-  return {
-    backgroundColor: getCategoryColor(category),
-  };
+export function getCategoryBadgeStyle(category: string): CSSProperties {
+  return categoryBadgeStyle(category);
+}
+
+export function resetCategorySettings() {
+  if (!isBrowser()) return;
+  window.localStorage.removeItem(COLOR_STORAGE_KEY);
+  window.localStorage.removeItem(LABEL_STORAGE_KEY);
 }

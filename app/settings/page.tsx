@@ -4,14 +4,11 @@
 
 import { useState } from "react";
 import PageContainer from "@/components/layout/PageContainer";
-import { useAppState } from "@/lib/state";
-import type { RecordCategory } from "@/lib/types";
 import {
-  CATEGORY_ITEMS,
-  DEFAULT_CATEGORY_COLORS,
-  DEFAULT_CATEGORY_LABELS,
-  loadCategoryColors,
-  loadCategoryLabels,
+  addCategory,
+  getAllCategories,
+  getCategoryColors,
+  getCategoryLabels,
   resetCategorySettings,
   saveCategoryColors,
   saveCategoryLabels,
@@ -19,152 +16,149 @@ import {
   type CategoryLabelMap,
 } from "@/lib/category-colors";
 
+function createCategoryId(label: string) {
+  return `custom_${label.trim().replace(/\s+/g, "_")}_${Date.now()}`;
+}
+
 export default function SettingsPage() {
-  const { state } = useAppState();
-
-  const [categoryColors, setCategoryColors] = useState<CategoryColorMap>(() =>
-    loadCategoryColors()
+  const [categories, setCategories] = useState<string[]>(() =>
+    getAllCategories()
   );
 
-  const [categoryLabels, setCategoryLabels] = useState<CategoryLabelMap>(() =>
-    loadCategoryLabels()
+  const [colors, setColors] = useState<CategoryColorMap>(() =>
+    getCategoryColors()
   );
 
-  const handleChangeColor = (category: RecordCategory, color: string) => {
-    setCategoryColors((current) => ({
-      ...current,
-      [category]: color,
-    }));
+  const [labels, setLabels] = useState<CategoryLabelMap>(() =>
+    getCategoryLabels()
+  );
+  const [newLabel, setNewLabel] = useState("");
+  const [newColor, setNewColor] = useState("#ec4899");
+
+  const loadCategories = () => {
+    setCategories(getAllCategories());
+    setColors(getCategoryColors());
+    setLabels(getCategoryLabels());
   };
 
-  const handleChangeLabel = (category: RecordCategory, label: string) => {
-    setCategoryLabels((current) => ({
-      ...current,
-      [category]: label,
-    }));
+  const handleChangeLabel = (category: string, value: string) => {
+    const next = {
+      ...labels,
+      [category]: value,
+    };
+
+    setLabels(next);
+    saveCategoryLabels(next);
   };
 
-  const handleSave = () => {
-    saveCategoryColors(categoryColors);
-    saveCategoryLabels(categoryLabels);
-    window.alert("カテゴリ設定を保存しました。");
-    window.location.reload();
+  const handleChangeColor = (category: string, value: string) => {
+    const next = {
+      ...colors,
+      [category]: value,
+    };
+
+    setColors(next);
+    saveCategoryColors(next);
   };
 
-  const handleResetCategorySettings = () => {
-    setCategoryColors(DEFAULT_CATEGORY_COLORS);
-    setCategoryLabels(DEFAULT_CATEGORY_LABELS);
+  const handleAddCategory = () => {
+    const label = newLabel.trim();
+    if (!label) return;
+
+    const id = createCategoryId(label);
+    addCategory(id, label, newColor);
+
+    setNewLabel("");
+    setNewColor("#ec4899");
+    loadCategories();
+  };
+
+  const handleReset = () => {
+    if (!confirm("カテゴリ設定を初期状態に戻しますか？")) return;
+
     resetCategorySettings();
-    window.alert("カテゴリ設定を初期化しました。");
-    window.location.reload();
-  };
-
-  const handleResetRecords = () => {
-    const ok = window.confirm(
-      "保存されているスケジュールをすべて削除しますか？この操作は元に戻せません。"
-    );
-
-    if (!ok) return;
-
-    window.localStorage.removeItem("beauty-record-pwa-records");
-    window.location.reload();
+    loadCategories();
   };
 
   return (
-    <PageContainer>
-      <div className="space-y-4">
-        <section className="rounded-4xl border border-pink-100 bg-white p-6 shadow-sm">
-          <h1 className="text-2xl font-bold text-slate-900">設定</h1>
-          <p className="mt-3 text-sm leading-7 text-slate-600">
-            カテゴリ名・カテゴリ色・保存データを管理できます。
-          </p>
+    <PageContainer title="設定" description="カテゴリ名や色を変更できます。">
+      <div className="space-y-6">
+        <section className="rounded-3xl border border-pink-100 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-950">カテゴリ追加</h2>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_120px_auto]">
+            <input
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              placeholder="例：ネイル、肌、病院など"
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-pink-400"
+            />
+
+            <input
+              type="color"
+              value={newColor}
+              onChange={(e) => setNewColor(e.target.value)}
+              className="h-12 w-full rounded-2xl border border-slate-300 bg-white p-2"
+            />
+
+            <button
+              type="button"
+              onClick={handleAddCategory}
+              className="rounded-2xl bg-pink-500 px-5 py-3 text-sm font-bold text-white! shadow-sm active:scale-[0.98]"
+            >
+              追加
+            </button>
+          </div>
         </section>
 
-        <section className="rounded-4xl border border-pink-100 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-900">カテゴリ設定</h2>
+        <section className="rounded-3xl border border-pink-100 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold text-slate-950">
+              カテゴリ名・色変更
+            </h2>
 
-          <div className="mt-5 space-y-4">
-            {CATEGORY_ITEMS.map((category) => (
+            <button
+              type="button"
+              onClick={handleReset}
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm active:scale-[0.98]"
+            >
+              初期化
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {categories.map((category) => (
               <div
                 key={category}
-                className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                className="grid gap-3 rounded-2xl bg-slate-50 p-3 sm:grid-cols-[120px_1fr_120px]"
               >
-                <div className="grid gap-2">
-                  <label className="text-sm font-bold text-slate-700">
-                    カテゴリ名
-                  </label>
-
-                  <input
-                    value={categoryLabels[category]}
-                    onChange={(e) =>
-                      handleChangeLabel(category, e.target.value)
-                    }
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-pink-400"
+                <div className="flex items-center gap-2">
+                  <span
+                    className="h-4 w-4 rounded-full"
+                    style={{
+                      backgroundColor: colors[category] ?? "#94a3b8",
+                    }}
                   />
+                  <span className="truncate text-xs font-bold text-slate-500">
+                    {category}
+                  </span>
                 </div>
 
-                <div className="grid gap-2">
-                  <label className="text-sm font-bold text-slate-700">
-                    カテゴリ色
-                  </label>
+                <input
+                  value={labels[category] ?? category}
+                  onChange={(e) => handleChangeLabel(category, e.target.value)}
+                  className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-pink-400"
+                />
 
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="color"
-                      value={categoryColors[category]}
-                      onChange={(e) =>
-                        handleChangeColor(category, e.target.value)
-                      }
-                      className="h-12 w-16 rounded-xl border border-slate-300 bg-white p-1"
-                    />
-
-                    <input
-                      value={categoryColors[category]}
-                      onChange={(e) =>
-                        handleChangeColor(category, e.target.value)
-                      }
-                      className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-pink-400"
-                    />
-                  </div>
-                </div>
+                <input
+                  type="color"
+                  value={colors[category] ?? "#94a3b8"}
+                  onChange={(e) => handleChangeColor(category, e.target.value)}
+                  className="h-12 w-full rounded-2xl border border-slate-300 bg-white p-2"
+                />
               </div>
             ))}
           </div>
-
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={handleSave}
-              className="inline-flex items-center justify-center rounded-2xl bg-pink-500 px-5 py-3 text-sm font-bold text-white! shadow-sm transition hover:bg-pink-600"
-            >
-              保存する
-            </button>
-
-            <button
-              type="button"
-              onClick={handleResetCategorySettings}
-              className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-            >
-              初期化する
-            </button>
-          </div>
-        </section>
-
-        <section className="rounded-4xl border border-pink-100 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-900">保存データ</h2>
-
-          <p className="mt-3 text-sm text-slate-600">
-            現在のスケジュール件数:{" "}
-            <span className="font-semibold">{state.records.length}件</span>
-          </p>
-
-          <button
-            type="button"
-            onClick={handleResetRecords}
-            className="mt-5 rounded-2xl bg-red-500 px-5 py-3 text-sm font-bold text-white! hover:bg-red-600"
-          >
-            スケジュールデータを削除
-          </button>
         </section>
       </div>
     </PageContainer>

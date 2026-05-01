@@ -35,6 +35,8 @@ export default function RecordDetailPage() {
     state.records
   );
 
+  const recordTime = record.time ?? "09:00";
+
   return (
     <PageContainer>
       <div className="space-y-4">
@@ -69,12 +71,32 @@ export default function RecordDetailPage() {
               {record.date}
             </span>
 
+            <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-600">
+              {recordTime}
+            </span>
+
             {daysFromPrevious !== null && (
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
                 {daysFromPrevious}日後（前回の
                 {categoryLabel(record.category)}より）
               </span>
             )}
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs font-bold text-slate-500">日付</p>
+              <p className="mt-1 text-base font-bold text-slate-900">
+                {record.date}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-pink-50 p-4">
+              <p className="text-xs font-bold text-pink-500">時刻</p>
+              <p className="mt-1 text-base font-bold text-pink-700">
+                {recordTime}
+              </p>
+            </div>
           </div>
 
           <p className="mt-4 whitespace-pre-wrap text-sm text-slate-700">
