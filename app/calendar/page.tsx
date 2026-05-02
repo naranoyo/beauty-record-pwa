@@ -14,18 +14,18 @@ import { APP_TEXT } from "@/lib/constants";
 import type {
   BeautyRecord,
   RecordFormValues,
-  ReminderSetting,
+  //ReminderSetting,
 } from "@/lib/types";
 
 type CalendarViewMode = "year" | "month" | "week" | "day";
 
-const DEFAULT_REMINDERS: ReminderSetting[] = [
-  {
-    amount: 1,
-    unit: "日",
-    time: "09:00",
-  },
-];
+// const DEFAULT_REMINDERS: ReminderSetting[] = [
+//   {
+//     amount: 1,
+//     unit: "日",
+//     time: "09:00",
+//   },
+// ];
 
 function createId() {
   return `record_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -227,8 +227,8 @@ export default function CalendarPage() {
                 startTime: modalStartTime,
                 endTime: modalEndTime,
                 status: "planned",
-                reminderEnabled: true,
-                reminders: DEFAULT_REMINDERS,
+                reminderEnabled: false,
+                reminders: [],
               }}
               submitLabel={APP_TEXT.scheduleSaveButton}
               onSubmit={handleSubmit}

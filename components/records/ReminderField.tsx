@@ -59,7 +59,7 @@ export default function ReminderField({
           <div>
             <h3 className="text-sm font-bold text-slate-900">通知</h3>
             <p className="mt-1 text-xs font-medium text-slate-500">
-              通知タイミングを設定できます
+              通知はOFFが初期設定です（必要なときだけONにできます）
             </p>
           </div>
         </div>

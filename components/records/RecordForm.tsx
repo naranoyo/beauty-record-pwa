@@ -2,9 +2,13 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RecordFormValues, ReminderSetting } from "@/lib/types";
-import { getAllCategories, getCategoryLabel } from "@/lib/category-colors";
+import {
+  CATEGORY_ITEMS,
+  getAllCategories,
+  getCategoryLabel,
+} from "@/lib/category-colors";
 import RecordImageUploader from "@/components/records/RecordImageUploader";
 import RecordImagePreview from "@/components/records/RecordImagePreview";
 import ReminderField from "@/components/records/ReminderField";
@@ -36,32 +40,18 @@ function convertOldReminderMinutes(minutes?: number[]): ReminderSetting[] {
 
   return minutes.map((minute) => {
     if (minute % 10080 === 0) {
-      return {
-        amount: minute / 10080,
-        unit: "週",
-        time: "09:00",
-      };
+      return { amount: minute / 10080, unit: "週", time: "09:00" };
     }
 
     if (minute % 1440 === 0) {
-      return {
-        amount: minute / 1440,
-        unit: "日",
-        time: "09:00",
-      };
+      return { amount: minute / 1440, unit: "日", time: "09:00" };
     }
 
     if (minute % 60 === 0) {
-      return {
-        amount: minute / 60,
-        unit: "時間",
-      };
+      return { amount: minute / 60, unit: "時間" };
     }
 
-    return {
-      amount: minute,
-      unit: "分",
-    };
+    return { amount: minute, unit: "分" };
   });
 }
 
@@ -70,7 +60,17 @@ export default function RecordForm({
   submitLabel = "保存",
   onSubmit,
 }: Props) {
-  const categories = useMemo(() => getAllCategories(), []);
+  const [categories, setCategories] = useState<string[]>(CATEGORY_ITEMS);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setCategories(getAllCategories());
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   const [form, setForm] = useState<RecordFormValues>({
     date: initialValues?.date ?? getTodayKey(),
@@ -82,7 +82,7 @@ export default function RecordForm({
     memo: initialValues?.memo ?? "",
     imageIds: initialValues?.imageIds ?? [],
     status: initialValues?.status ?? "planned",
-    reminderEnabled: initialValues?.reminderEnabled ?? true,
+    reminderEnabled: initialValues?.reminderEnabled ?? false,
     reminders:
       initialValues?.reminders ??
       convertOldReminderMinutes(initialValues?.reminderMinutes),

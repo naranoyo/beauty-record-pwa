@@ -11,16 +11,16 @@ import { APP_TEXT } from "@/lib/constants";
 import type {
   BeautyRecord,
   RecordFormValues,
-  ReminderSetting,
+  //ReminderSetting,
 } from "@/lib/types";
 
-const DEFAULT_REMINDERS: ReminderSetting[] = [
-  {
-    amount: 1,
-    unit: "日",
-    time: "09:00",
-  },
-];
+// const DEFAULT_REMINDERS: ReminderSetting[] = [
+//   {
+//     amount: 1,
+//     unit: "日",
+//     time: "09:00",
+//   },
+// ];
 
 function createId() {
   return `record_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -102,8 +102,8 @@ export default function NewRecordPageContent() {
               startTime: "09:00",
               endTime: "10:00",
               status: "planned",
-              reminderEnabled: true,
-              reminders: DEFAULT_REMINDERS,
+              reminderEnabled: false,
+              reminders: [],
             }}
             submitLabel={isSaving ? "保存中..." : APP_TEXT.scheduleSaveButton}
             onSubmit={handleSubmit}
