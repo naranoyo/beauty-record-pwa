@@ -7,6 +7,7 @@ import PageContainer from "@/components/layout/PageContainer";
 import RecordImagePreview from "@/components/records/RecordImagePreview";
 import { useAppState } from "@/lib/state";
 import { APP_TEXT } from "@/lib/constants";
+import type { ReminderSetting } from "@/lib/types";
 import {
   categoryBadgeStyle,
   categoryLabel,
@@ -14,6 +15,15 @@ import {
   statusBadgeClassName,
   statusLabel,
 } from "@/lib/record-utils";
+
+function formatReminder(reminder: ReminderSetting) {
+  const time =
+    reminder.unit === "日" || reminder.unit === "週"
+      ? `の ${reminder.time ?? "09:00"}`
+      : "";
+
+  return `通知 ${reminder.amount}${reminder.unit}前${time}`;
+}
 
 export default function RecordDetailPage() {
   const params = useParams<{ id: string }>();
@@ -35,7 +45,11 @@ export default function RecordDetailPage() {
     state.records
   );
 
-  const recordTime = record.time ?? "09:00";
+  const recordTime = record.startTime ?? record.time ?? "09:00";
+  const recordEndTime = record.endTime ?? "";
+
+  const reminders = record.reminders ?? [];
+  const reminderEnabled = record.reminderEnabled ?? true;
 
   return (
     <PageContainer>
@@ -72,8 +86,18 @@ export default function RecordDetailPage() {
             </span>
 
             <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-600">
-              {recordTime}
+              {recordEndTime ? `${recordTime}〜${recordEndTime}` : recordTime}
             </span>
+
+            {reminderEnabled && reminders.length > 0 ? (
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-600">
+                通知あり
+              </span>
+            ) : (
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                通知なし
+              </span>
+            )}
 
             {daysFromPrevious !== null && (
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
@@ -94,9 +118,30 @@ export default function RecordDetailPage() {
             <div className="rounded-2xl bg-pink-50 p-4">
               <p className="text-xs font-bold text-pink-500">時刻</p>
               <p className="mt-1 text-base font-bold text-pink-700">
-                {recordTime}
+                {recordEndTime ? `${recordTime}〜${recordEndTime}` : recordTime}
               </p>
             </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl bg-blue-50 p-4">
+            <p className="text-xs font-bold text-blue-500">通知</p>
+
+            {reminderEnabled && reminders.length > 0 ? (
+              <div className="mt-2 space-y-2">
+                {reminders.map((reminder, index) => (
+                  <p
+                    key={`${reminder.amount}_${reminder.unit}_${index}`}
+                    className="text-sm font-bold text-blue-700"
+                  >
+                    {formatReminder(reminder)}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-1 text-sm font-bold text-slate-500">
+                通知はOFFです
+              </p>
+            )}
           </div>
 
           <p className="mt-4 whitespace-pre-wrap text-sm text-slate-700">

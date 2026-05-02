@@ -8,7 +8,19 @@ import PageContainer from "@/components/layout/PageContainer";
 import RecordForm from "@/components/records/RecordForm";
 import { useAppState } from "@/lib/state";
 import { APP_TEXT } from "@/lib/constants";
-import type { BeautyRecord, RecordFormValues } from "@/lib/types";
+import type {
+  BeautyRecord,
+  RecordFormValues,
+  ReminderSetting,
+} from "@/lib/types";
+
+const DEFAULT_REMINDERS: ReminderSetting[] = [
+  {
+    amount: 1,
+    unit: "日",
+    time: "09:00",
+  },
+];
 
 function createId() {
   return `record_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -58,6 +70,11 @@ export default function NewRecordPageContent() {
       memo: values.memo,
       imageIds: values.imageIds,
       status: values.status,
+
+      reminderEnabled: values.reminderEnabled,
+      reminders: values.reminderEnabled ? values.reminders : [],
+      reminderMinutes: undefined,
+
       createdAt: now,
       updatedAt: now,
     };
@@ -66,7 +83,7 @@ export default function NewRecordPageContent() {
 
     setMessage("スケジュールを保存しました");
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       router.push("/calendar");
     }, 1200);
   };
@@ -85,6 +102,8 @@ export default function NewRecordPageContent() {
               startTime: "09:00",
               endTime: "10:00",
               status: "planned",
+              reminderEnabled: true,
+              reminders: DEFAULT_REMINDERS,
             }}
             submitLabel={isSaving ? "保存中..." : APP_TEXT.scheduleSaveButton}
             onSubmit={handleSubmit}

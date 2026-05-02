@@ -1,6 +1,5 @@
 // lib/types.ts
 
-// 固定＋カスタム対応
 export type RecordCategory =
   | "epilation"
   | "hair"
@@ -14,23 +13,22 @@ export type RecordCategory =
   | "other"
   | string;
 
-// ステータス
 export type RecordStatus = "planned" | "done";
 
-// メインデータ
+export type ReminderUnit = "分" | "時間" | "日" | "週";
+
+export type ReminderSetting = {
+  amount: number;
+  unit: ReminderUnit;
+  time?: string;
+};
+
 export type BeautyRecord = {
   id: string;
   date: string;
 
-  /**
-   * 旧：単一時刻（互換用）
-   * → startTime と同じ扱いにする
-   */
   time: string;
 
-  /**
-   * 新：開始・終了
-   */
   startTime?: string;
   endTime?: string;
 
@@ -40,28 +38,33 @@ export type BeautyRecord = {
   imageIds: string[];
 
   status?: RecordStatus;
+
+  reminderEnabled?: boolean;
+
+  /**
+   * 新：通知設定
+   * 例：1日前の9:00
+   */
+  reminders?: ReminderSetting[];
+
+  /**
+   * 旧：互換用
+   */
+  reminderMinutes?: number[];
+
   createdAt: string;
   updatedAt: string;
 };
 
-// アプリ状態
 export type AppState = {
   records: BeautyRecord[];
   initialized: boolean;
 };
 
-// フォーム用
 export type RecordFormValues = {
   date: string;
-
-  /**
-   * 旧：そのまま残す
-   */
   time: string;
 
-  /**
-   * 新：入力用
-   */
   startTime: string;
   endTime: string;
 
@@ -70,9 +73,16 @@ export type RecordFormValues = {
   memo: string;
   imageIds: string[];
   status: RecordStatus;
+
+  reminderEnabled: boolean;
+  reminders: ReminderSetting[];
+
+  /**
+   * 旧：互換用
+   */
+  reminderMinutes?: number[];
 };
 
-// カスタムカテゴリ（新規追加用）
 export type CustomCategory = {
   id: string;
   label: string;

@@ -9,7 +9,15 @@ import PageContainer from "@/components/layout/PageContainer";
 import RecordForm from "@/components/records/RecordForm";
 import { useAppState } from "@/lib/state";
 import { APP_TEXT } from "@/lib/constants";
-import type { RecordFormValues } from "@/lib/types";
+import type { RecordFormValues, ReminderSetting } from "@/lib/types";
+
+const DEFAULT_REMINDERS: ReminderSetting[] = [
+  {
+    amount: 1,
+    unit: "日",
+    time: "09:00",
+  },
+];
 
 export default function EditRecordPage() {
   const params = useParams<{ id: string }>();
@@ -34,6 +42,11 @@ export default function EditRecordPage() {
       memo: values.memo,
       imageIds: values.imageIds,
       status: values.status,
+
+      reminderEnabled: values.reminderEnabled,
+      reminders: values.reminderEnabled ? values.reminders : [],
+      reminderMinutes: undefined,
+
       updatedAt: new Date().toISOString(),
     });
 
@@ -86,6 +99,10 @@ export default function EditRecordPage() {
             memo: record.memo,
             imageIds: record.imageIds,
             status: record.status ?? "planned",
+
+            reminderEnabled: record.reminderEnabled ?? true,
+            reminders: record.reminders ?? DEFAULT_REMINDERS,
+            reminderMinutes: record.reminderMinutes,
           }}
           submitLabel={APP_TEXT.scheduleSaveButton}
           onSubmit={handleSubmit}

@@ -1,7 +1,7 @@
 // components/records/RecordSummaryCard.tsx
 
 import Link from "next/link";
-import type { BeautyRecord } from "@/lib/types";
+import type { BeautyRecord, ReminderSetting } from "@/lib/types";
 import { APP_TEXT } from "@/lib/constants";
 import {
   categoryBadgeStyle,
@@ -36,6 +36,15 @@ function getDurationLabel(start?: string, end?: string) {
   return `${h}時間${m}分`;
 }
 
+function formatReminder(reminder: ReminderSetting) {
+  const time =
+    reminder.unit === "日" || reminder.unit === "週"
+      ? `の ${reminder.time ?? "09:00"}`
+      : "";
+
+  return `通知 ${reminder.amount}${reminder.unit}前${time}`;
+}
+
 export default function RecordSummaryCard({
   record,
   allRecords,
@@ -47,8 +56,11 @@ export default function RecordSummaryCard({
 
   const start = record.startTime ?? record.time ?? "09:00";
   const end = record.endTime;
-
   const duration = getDurationLabel(start, end);
+
+  const reminderEnabled = record.reminderEnabled ?? true;
+  const reminders = record.reminders ?? [];
+  const firstReminder = reminders[0];
 
   return (
     <article
@@ -82,15 +94,23 @@ export default function RecordSummaryCard({
               {record.date}
             </span>
 
-            {/* 時間表示 */}
             <span className="rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-600">
               {end ? `${start}〜${end}` : start}
             </span>
 
-            {/* 使用時間 */}
-            {duration && (
+            {duration ? (
               <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-600">
                 {duration}
+              </span>
+            ) : null}
+
+            {reminderEnabled && firstReminder ? (
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-600">
+                🔔 {formatReminder(firstReminder)}
+              </span>
+            ) : (
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                通知なし
               </span>
             )}
 
@@ -113,6 +133,12 @@ export default function RecordSummaryCard({
           {record.imageIds.length > 0 ? (
             <p className="mt-2 text-xs font-bold text-pink-600">
               画像 {record.imageIds.length}件
+            </p>
+          ) : null}
+
+          {reminderEnabled && reminders.length > 1 ? (
+            <p className="mt-2 text-xs font-bold text-blue-600">
+              通知ほか {reminders.length - 1}件
             </p>
           ) : null}
         </div>

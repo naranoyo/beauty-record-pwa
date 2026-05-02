@@ -11,9 +11,21 @@ import RecordForm from "@/components/records/RecordForm";
 import RecordSummaryCard from "@/components/records/RecordSummaryCard";
 import { useAppState } from "@/lib/state";
 import { APP_TEXT } from "@/lib/constants";
-import type { BeautyRecord, RecordFormValues } from "@/lib/types";
+import type {
+  BeautyRecord,
+  RecordFormValues,
+  ReminderSetting,
+} from "@/lib/types";
 
 type CalendarViewMode = "year" | "month" | "week" | "day";
+
+const DEFAULT_REMINDERS: ReminderSetting[] = [
+  {
+    amount: 1,
+    unit: "日",
+    time: "09:00",
+  },
+];
 
 function createId() {
   return `record_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -109,6 +121,11 @@ export default function CalendarPage() {
       memo: values.memo,
       imageIds: values.imageIds,
       status: values.status,
+
+      reminderEnabled: values.reminderEnabled,
+      reminders: values.reminderEnabled ? values.reminders : [],
+      reminderMinutes: undefined,
+
       createdAt: now,
       updatedAt: now,
     };
@@ -210,6 +227,8 @@ export default function CalendarPage() {
                 startTime: modalStartTime,
                 endTime: modalEndTime,
                 status: "planned",
+                reminderEnabled: true,
+                reminders: DEFAULT_REMINDERS,
               }}
               submitLabel={APP_TEXT.scheduleSaveButton}
               onSubmit={handleSubmit}

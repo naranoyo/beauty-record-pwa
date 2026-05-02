@@ -3,10 +3,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { RecordFormValues } from "@/lib/types";
+import type { RecordFormValues, ReminderSetting } from "@/lib/types";
 import { getAllCategories, getCategoryLabel } from "@/lib/category-colors";
 import RecordImageUploader from "@/components/records/RecordImageUploader";
 import RecordImagePreview from "@/components/records/RecordImagePreview";
+import ReminderField from "@/components/records/ReminderField";
 
 type Props = {
   initialValues?: Partial<RecordFormValues>;
@@ -14,12 +15,54 @@ type Props = {
   onSubmit: (values: RecordFormValues) => void;
 };
 
+const DEFAULT_REMINDERS: ReminderSetting[] = [
+  {
+    amount: 1,
+    unit: "日",
+    time: "09:00",
+  },
+];
+
 function getTodayKey() {
   const date = new Date();
   const y = date.getFullYear();
   const m = `${date.getMonth() + 1}`.padStart(2, "0");
   const d = `${date.getDate()}`.padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+function convertOldReminderMinutes(minutes?: number[]): ReminderSetting[] {
+  if (!minutes || minutes.length === 0) return DEFAULT_REMINDERS;
+
+  return minutes.map((minute) => {
+    if (minute % 10080 === 0) {
+      return {
+        amount: minute / 10080,
+        unit: "週",
+        time: "09:00",
+      };
+    }
+
+    if (minute % 1440 === 0) {
+      return {
+        amount: minute / 1440,
+        unit: "日",
+        time: "09:00",
+      };
+    }
+
+    if (minute % 60 === 0) {
+      return {
+        amount: minute / 60,
+        unit: "時間",
+      };
+    }
+
+    return {
+      amount: minute,
+      unit: "分",
+    };
+  });
 }
 
 export default function RecordForm({
@@ -39,6 +82,10 @@ export default function RecordForm({
     memo: initialValues?.memo ?? "",
     imageIds: initialValues?.imageIds ?? [],
     status: initialValues?.status ?? "planned",
+    reminderEnabled: initialValues?.reminderEnabled ?? true,
+    reminders:
+      initialValues?.reminders ??
+      convertOldReminderMinutes(initialValues?.reminderMinutes),
   });
 
   const duration = useMemo(() => {
@@ -66,6 +113,8 @@ export default function RecordForm({
           ...form,
           title: form.title.trim() || "タイトルなし",
           time: form.startTime,
+          reminders: form.reminderEnabled ? form.reminders : [],
+          reminderMinutes: undefined,
         });
       }}
       className="space-y-6"
@@ -149,6 +198,22 @@ export default function RecordForm({
           placeholder="メモを入力"
         />
       </label>
+
+      <ReminderField
+        enabled={form.reminderEnabled}
+        reminders={form.reminders}
+        onChangeEnabled={(reminderEnabled) =>
+          setForm({
+            ...form,
+            reminderEnabled,
+            reminders:
+              reminderEnabled && form.reminders.length === 0
+                ? DEFAULT_REMINDERS
+                : form.reminders,
+          })
+        }
+        onChangeReminders={(reminders) => setForm({ ...form, reminders })}
+      />
 
       <div className="grid gap-3">
         <span className="text-sm font-bold text-slate-700">画像</span>
